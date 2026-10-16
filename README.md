@@ -79,9 +79,33 @@ The news moods' correlation with the overnight rule's errors is −0.02 to −0.
 
 Before costs. Yahoo's opens were checked against an official NSE download with `scripts/check_prices.py`: at least 95% match within 0.2%. Dropping every suspect bar (open equal to close, or to the previous close) barely changes the result, and daytime returns are negative in every full year.
 
-What it does not show yet: why. Either the ETF opens at a premium to the value of its silver and converges during the day, or international silver itself tends to fall during Indian hours. `scripts/intraday_check.py` tests this with hourly COMEX silver and USD/INR.
+### 5. Why: the ETF opens at a premium to its silver and gives it back
 
-What it does not mean: a free trade. NSE's official close is a volume-weighted average of the last 30 minutes, not a single price you can trade at, and costs on a daily round trip add up quickly.
+`scripts/intraday_check.py` compares SILVERBEES with hourly COMEX silver converted to rupees, over the same Indian trading hours (512 sessions, May 2024 to Oct 2026; silver's morning price is taken at 09:30 IST, the first hourly bar after the open).
+
+| | Daytime total |
+|---|---|
+| SILVERBEES | **−50.8%** |
+| Silver in rupees, same hours | **+37.5%** |
+| Gap, ETF minus silver | −64.2% (average −19.3 bps a day, t = −3.6) |
+
+Silver did not fall during Indian hours; it rose. The ETF fell anyway. Grouping days by how far the ETF's open ran ahead of silver's overnight move:
+
+| Opening premium (quintile) | Avg premium | ETF daytime | Silver daytime | Gap |
+|---|---|---|---|---|
+| 1 (lowest) | −115 bps | +58 bps | +8 bps | +51 bps |
+| 2 | −26 bps | +30 bps | +12 bps | +18 bps |
+| 3 | +23 bps | −26 bps | −12 bps | −14 bps |
+| 4 | +55 bps | −19 bps | +32 bps | −50 bps |
+| 5 (highest) | +166 bps | −105 bps | −4 bps | −101 bps |
+
+The richer the open, the bigger the same-day giveback (slope −0.62, correlation −0.57). Opening cheap is followed by gains.
+
+Caveat: the slope is partly mechanical, because the opening price appears in both the premium and the giveback, so noise in it (an odd opening-auction print, or silver measured at 09:30 rather than 09:15) pushes the slope negative by itself. The average daily gap does not share that problem and is the stronger evidence. Next check: measure the giveback from 10:15 using hourly ETF prices, so the opening price is used only once.
+
+### 6. What this does not mean
+
+It is not a free trade. NSE's official close is a volume-weighted average of the last 30 minutes, not a single price you can trade at, and costs on a daily round trip add up quickly.
 
 ## Setup (Windows)
 

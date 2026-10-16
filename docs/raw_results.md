@@ -105,3 +105,22 @@ overnight+news     127        -0.015         -0.004       0.105   0.014        -
 buy_every_open     896        -0.872         -0.439       0.236  -2.324        -0.873
   buy_and_hold       1         2.098          0.374       0.370   1.051        -0.450
 ```
+
+## SILVERBEES intraday check (hourly silver)
+
+```
+SILVERBEES.NS: 512 sessions with hourly silver, 2024-05-29 to 2026-10-14
+Total daytime return, ETF:            -50.8%
+Total daytime return, silver in INR:  +37.5%
+Total daytime gap, ETF minus silver:  -64.2%
+Average daily gap: -19.3 bps  (t = -3.6)
+Daytime correlation, ETF vs silver:   0.67
+Opening premium vs giveback: slope -0.62, correlation -0.57
+
+              days  open_premium_bps  etf_daytime_bps  silver_daytime_bps  gap_bps
+1 lowest       103            -115.3             58.1                 7.8     51.1
+2              102             -26.2             30.2                12.2     18.1
+3              102              23.4            -26.4               -12.4    -14.3
+4              102              54.7            -19.1                31.5    -50.3
+5 highest      103             166.1           -105.1                -4.0   -101.0
+```
