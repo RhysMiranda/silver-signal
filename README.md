@@ -36,13 +36,52 @@ Every model is scored **walk-forward**: fit on everything before a 20-day block,
 
 ## Results
 
-Run it and paste your numbers here. On synthetic data (where silver drives the ETF by construction) the overnight rule calls close-to-close direction about 65% of the time, and has no edge on open-to-close. That gap is the whole point of the project.
+Main results use **Nippon India Silver ETF (SILVERBEES)** as a proxy, because Yahoo Finance only has HDFC Silver ETF prices from March 2025. Both ETFs hold physical silver and track the same domestic silver price. SILVERBEES gives 1,016 trading days (Sept 2022 to Oct 2026), of which 896 are scored out of sample. Raw tables, including the HDFC-only run, are in [docs/raw_results.md](docs/raw_results.md).
 
-| Target | Best baseline | Hit rate (95% interval) | Rank corr. | Backtest Sharpe after costs |
-|---|---|---|---|---|
-| close-to-close | | | | n/a |
-| open-to-close | | | | |
-| open-to-close + news | | | | |
+### 1. Overnight silver and rupee moves explain most of the ETF's day
+
+| Target | Model | Hit rate (95% interval) | Rank corr. |
+|---|---|---|---|
+| Close-to-close | overnight rule | **67.1%** (64.0–70.2%) | 0.455 |
+| Close-to-close | historical mean | 53.2% (49.9–56.5%) | −0.013 |
+| Open-to-close | overnight rule | **55.9%** (52.6–59.1%) | 0.154 |
+| Open-to-close | historical mean | 50.8% (47.5–54.1%) | 0.010 |
+| Open-to-close | gap rule | 45.3% (42.0–48.5%) | −0.149 |
+
+The rule calls close-to-close direction two days in three. On the tradable open-to-close return it keeps a small edge whose interval sits above 50%. The gap rule is worse than chance: whether a day continues or reverses its opening gap is unstable, and the fitted direction keeps flipping out of sample.
+
+### 2. That edge does not make money as "buy at the open"
+
+Buying at the open and selling at the close whenever the forecast beats a 10 bp round-trip cost: 134 trades, −2.5% in total, Sharpe about 0. The skill is mostly in spotting down days, which a long-only strategy can only sit out.
+
+### 3. News, as measured by GDELT tone, adds nothing
+
+About 234,000 English market headlines (2022–2026), each assigned only to the first session that opens after it was published, averaged into three daily moods: metals, US macro and India.
+
+| Model (open-to-close) | Hit rate (95% interval) | Rank corr. |
+|---|---|---|
+| overnight rule | 55.9% (52.6–59.1%) | 0.154 |
+| news only | 50.3% (47.0–53.6%) | −0.002 |
+| overnight rule + news | 55.4% (52.1–58.7%) | 0.140 |
+
+The news moods' correlation with the overnight rule's errors is −0.02 to −0.03, inside the ±0.07 noise band for 896 days. GDELT's general-purpose tone is a blunt measure; a finance-specific scorer (FinBERT, or an LLM that knows "rate cuts" are good for silver) is the next test.
+
+### 4. The ETF's gains came overnight; Indian trading hours lost money
+
+| Period | Overnight (close → next open) | Daytime (open → close) | Up days, daytime |
+|---|---|---|---|
+| All days | +1,297% | **−73%** | 48% |
+| Excluding 59 suspect Yahoo bars | +1,349% | −71% | 49% |
+| 2023 | +97% | −41% | 42% |
+| 2024 | +87% | −33% | 50% |
+| 2025 | +185% | −13% | 54% |
+| 2026 to 16 Oct | +5% | −15% | 51% |
+
+Before costs. Yahoo's opens were checked against an official NSE download with `scripts/check_prices.py`: at least 95% match within 0.2%. Dropping every suspect bar (open equal to close, or to the previous close) barely changes the result, and daytime returns are negative in every full year.
+
+What it does not show yet: why. Either the ETF opens at a premium to the value of its silver and converges during the day, or international silver itself tends to fall during Indian hours. `scripts/intraday_check.py` tests this with hourly COMEX silver and USD/INR.
+
+What it does not mean: a free trade. NSE's official close is a volume-weighted average of the last 30 minutes, not a single price you can trade at, and costs on a daily round trip add up quickly.
 
 ## Setup (Windows)
 
@@ -51,33 +90,46 @@ py -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 python -m pytest
-python scripts\run_baselines.py --synthetic   # check everything runs, no network
-python scripts\run_baselines.py               # real data, cached in data\raw\
+python scripts\run_baselines.py --synthetic                 # check everything runs, no network
+python scripts\run_baselines.py --etf SILVERBEES.NS         # baselines on real prices
+python scripts\news_test.py --etf SILVERBEES.NS             # does news help? (needs data\news\headlines.csv)
+python scripts\check_prices.py nse_file.csv --etf SILVERBEES.NS   # Yahoo vs official NSE prices
+python scripts\intraday_check.py --etf SILVERBEES.NS        # is the daytime drop the ETF or silver itself?
 ```
 
-Options: `--refresh` re-downloads prices, `--cost-bps 15` sets the round-trip cost (default 10 bps; use what your broker actually charges plus the spread), `--min-train` and `--step` control the walk-forward windows. Results are written to `results\real\`.
+Options: `--refresh` re-downloads prices, `--cost-bps 15` sets the round-trip cost (default 10 bps; use what your broker actually charges plus the spread), `--min-train` and `--step` control the walk-forward windows. Results are written to `results\`.
+
+News: `python scripts\make_gdelt_sql.py --start 2024-01-01 --end 2025-01-01` prints a BigQuery query (a ready copy is in `sql\gdelt_headlines.sql`). Save the results as CSV in `data\news\raw\`, then `python scripts\clean_news.py` builds `data\news\headlines.csv` and prints a quality report.
 
 ## Layout
 
 ```
 silver_signal/
-  config.py      tickers, market hours, cost assumption
-  data.py        Yahoo Finance download and CSV cache
-  features.py    one row per trading day, no look-ahead
-  baselines.py   the models to beat
-  evaluate.py    walk-forward, hit rate, backtest
-  news.py        assigns headlines to sessions safely; scoring is yours
-  synthetic.py   fake data with the real timing, for tests
-scripts/run_baselines.py
-tests/           look-ahead, news cut-off and walk-forward checks
-PLAN.md          what to build next, week by week
+  config.py         tickers, market hours, cost assumption
+  data.py           Yahoo Finance download and CSV cache
+  features.py       one row per trading day, no look-ahead
+  baselines.py      the models to beat
+  evaluate.py       walk-forward, hit rate, backtest
+  news.py           assigns headlines to sessions safely
+  news_filter.py    what counts as a relevant headline (shared by SQL and Python)
+  news_features.py  daily news moods per theme
+  intraday.py       hourly silver vs the ETF during Indian trading hours
+  synthetic.py      fake data with the real timing, for tests
+scripts/            run_baselines, news_test, check_prices, intraday_check,
+                    make_gdelt_sql, clean_news
+sql/                ready-to-paste BigQuery query
+tests/              look-ahead, news cut-off, filters, walk-forward
+docs/               raw output tables
+PLAN.md             what to build next, week by week
 ```
 
 ## Known limitations
 
 - `SI=F` is a continuous futures series, so it jumps when contracts roll. Those days produce fake "overnight moves". Detect them or switch to a spot series.
 - Daily bars only approximate the overnight window (they run roughly 03:30 to 03:30 IST, not 15:30 to 09:15). `PLAN.md` week 2 replaces this with hourly data.
-- The ETF has traded since September 2022, so there are only around 1,000 trading days. Hit rates near 52% are indistinguishable from chance at this sample size; check the interval.
+- Yahoo only has HDFC Silver ETF prices from March 2025, so the main results use SILVERBEES (`--etf SILVERBEES.NS`). Around 1,000 trading days in total: hit rates near 52% are indistinguishable from chance, so always read the interval.
+- NSE's official closing price is a volume-weighted average of the last 30 minutes, not a single tradable price.
+- GDELT has no headlines for 17 days in June 2025. Those sessions are flagged as `news_missing` rather than treated as quiet.
 - The ETF can trade at a premium or discount to the value of its silver, which no price model here captures yet.
 
 Not financial advice. Paper trade any signal for a few months before risking money on it.
