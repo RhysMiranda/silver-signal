@@ -71,7 +71,8 @@ def main() -> None:
     for c in NEWS:
         r = df.loc[resid.index, c].rank().corr(resid.rank())
         print(f"  {c:<12} {r:+.3f}")
-    print("  (with ~300 days, anything inside about +/-0.11 is indistinguishable from zero)")
+    band = 1.96 / len(resid) ** 0.5
+    print(f"  (with {len(resid)} days, anything inside about +/-{band:.3f} is indistinguishable from zero)")
 
     # 2. The proper test: forecasts and a backtest, out of sample
     acc, bt = [], []
