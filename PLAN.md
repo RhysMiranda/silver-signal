@@ -25,15 +25,18 @@ Daily bars run roughly 03:30 to 03:30 IST. The true window is 15:30 (yesterday's
 
 ## Week 3: collect historical news (you)
 
-The hard, unglamorous part. Options:
+The hard, unglamorous part. The tools for it are ready:
 
-- **GDELT DOC API:** easy, free, but only covers about the last three months. Good for building the live pipeline.
-- **GDELT GKG on Google BigQuery** (`gdelt-bq.gdeltv2.gkg_partitioned`): years of global news with timestamps. Always filter on the date partition, or one query can eat the monthly free allowance.
-- **Kaggle financial-news datasets:** quick, but check they have publication times, not just dates.
+1. **Make the query.** `python scripts\make_gdelt_sql.py --start 2024-01-01 --end 2024-01-08` prints a BigQuery query (a copy is in `sql\gdelt_one_week_example.sql`). It keeps English originals only, drops sports and other junk, labels each headline (silver, precious metals, rupee, Fed, dollar, RBI, US macro, India import duty) and removes syndicated duplicates.
+2. **Run one week first** at https://console.cloud.google.com/bigquery. Before pressing Run, read "This query will process ... GB" and multiply by the number of weeks you want. Stay under the free 1 TB a month by doing a few months per calendar month if needed.
+3. **Export** each result as CSV into `data\news\raw\`.
+4. **Clean and review:** `python scripts\clean_news.py` combines the files, re-checks every headline, and prints counts by category, source and month, plus random samples. Read the samples. If junk gets through, add words to `JUNK` or tighten a category in `silver_signal\news_filter.py`, add the headline to `tests\test_news_filter.py`, and regenerate the query. Both the SQL and the cleaner use the same definitions.
 
-Store everything as `data\news\headlines.parquet` with columns `published_utc`, `title`, `source`, `url`. Keep queries broad: silver, gold, Fed, dollar, rupee, RBI, solar demand, inflation.
+Output: `data\news\headlines.csv` with `published_utc, title, source, url, category, gdelt_tone, trusted`.
 
-**Done when:** you have at least two years of timestamped headlines, and you've checked a sample of timestamps by hand against the original articles.
+Alternatives if BigQuery gets expensive: the GDELT DOC API (free, last three months only) or a Kaggle news dataset with publication times.
+
+**Done when:** you have at least two years of headlines, the samples look relevant, and you've opened 10 URLs to check the timestamps against the articles.
 
 ## Week 4: turn headlines into features (you)
 
