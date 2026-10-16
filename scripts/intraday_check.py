@@ -40,7 +40,7 @@ def main() -> None:
     print(f"Total daytime gap, ETF minus silver:  {r['gap_daytime_total']:+.1%}")
     print(f"Average daily gap: {r['mean_gap_bps']:+.1f} bps  (t = {r['gap_t_stat']:+.1f}; beyond +/-2 is unlikely to be chance)")
     print(f"Daytime correlation, ETF vs silver:   {r['corr_etf_vs_silver_daytime']:.2f}")
-    print(f"\nDoes a bigger opening premium mean a bigger daytime giveback?")
+    print("\nDoes a bigger opening premium mean a bigger daytime giveback?")
     print(f"  slope {r['premium_slope']:+.2f}, correlation {r['premium_corr']:+.2f}  "
           "(a slope near -1 means the opening premium fully unwinds by the close)\n")
     pd.set_option("display.width", 140)

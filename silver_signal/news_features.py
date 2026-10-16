@@ -1,18 +1,21 @@
-"""Turn cleaned headlines into a few numbers per trading day.
+"""Turn scored headlines into a few numbers per trading day.
 
-The question each number answers: "what was the mood of the news that came out
-after the previous session's open and before this session's 09:15 open?"
+Each number answers: "what was the mood of this theme's news, published after
+the previous session's open and before this session's 09:15 open?"
 
-Mood here is GDELT's own `gdelt_tone` score for each article (negative = gloomy,
-positive = upbeat). It is a crude, free starting point. Your FinBERT or LLM
-scores later replace it, using the same plumbing.
+Two scores can be used, through the same plumbing:
+    gdelt_tone  GDELT's own general-purpose tone per article (free, crude)
+    fb_score    FinBERT: P(positive) - P(negative), finance-specific
+                (added by scripts/spark_score_news.py)
 
-Categories are grouped into three themes so a model with a few hundred days of
-data has only a handful of numbers to learn from:
+Themes are kept apart where the sign for silver differs. Good news for the
+dollar is usually bad for silver; a rate cut from the Fed is usually good:
 
-    metals  silver, precious_metals, india_duty
-    us      fed, dollar, us_macro
-    india   rupee, rbi
+    metals   silver, precious_metals, india_duty
+    fed      fed
+    dollar   dollar
+    us_data  us_macro
+    india    rupee, rbi
 """
 from __future__ import annotations
 
@@ -22,40 +25,54 @@ from . import news
 
 THEMES = {
     "silver": "metals", "precious_metals": "metals", "india_duty": "metals",
-    "fed": "us", "dollar": "us", "us_macro": "us",
+    "fed": "fed",
+    "dollar": "dollar",
+    "us_macro": "us_data",
     "rupee": "india", "rbi": "india",
 }
+THEME_NAMES = ["metals", "fed", "dollar", "us_data", "india"]
+PREFIX = {"gdelt_tone": "tone", "fb_score": "fb"}
 
 
 def load_headlines(path) -> pd.DataFrame:
-    h = pd.read_csv(path)
+    path = str(path)
+    h = pd.read_parquet(path) if path.endswith(".parquet") else pd.read_csv(path)
     h["published_utc"] = pd.to_datetime(h["published_utc"], utc=True)
     return h
 
 
-def tone_features(headlines: pd.DataFrame, sessions: pd.DatetimeIndex,
-                  trusted_only: bool = False) -> pd.DataFrame:
-    """One row per session: average tone and headline count for each theme.
+def theme_features(headlines: pd.DataFrame, sessions: pd.DatetimeIndex,
+                   score: str = "gdelt_tone", trusted_only: bool = False) -> pd.DataFrame:
+    """One row per session: average score and headline count for each theme.
 
-    Columns: tone_metals, tone_us, tone_india, n_metals, n_us, n_india, news_missing.
-    Tone is 0 (neutral) on days a theme had no headlines.
+    Columns: <prefix>_<theme> for each theme (0 = neutral when a theme had no
+    headlines), n_<theme>, and news_missing (no headlines at all that session).
     """
+    prefix = PREFIX.get(score, score)
     h = headlines.copy()
     if trusted_only:
         h = h[h["trusted"].astype(bool)]
     h["theme"] = h["category"].map(THEMES)
-    h = h.dropna(subset=["theme", "gdelt_tone"])
+    h = h.dropna(subset=["theme", score])
     h["session"] = news.assign_session(h["published_utc"], sessions)
     h = h.dropna(subset=["session"])
 
-    g = h.groupby(["session", "theme"])["gdelt_tone"]
-    tone = g.mean().unstack().add_prefix("tone_")
-    count = g.size().unstack().add_prefix("n_")
-    out = pd.concat([tone, count], axis=1).reindex(sessions)
-    for theme in sorted(set(THEMES.values())):
-        out[f"tone_{theme}"] = out.get(f"tone_{theme}", pd.Series(index=sessions, dtype=float)).fillna(0.0)
-        out[f"n_{theme}"] = out.get(f"n_{theme}", pd.Series(index=sessions, dtype=float)).fillna(0).astype(int)
-    out["news_missing"] = (out[[c for c in out if c.startswith("n_")]].sum(axis=1) == 0).astype(int)
-    out.index.name = "date"
-    return out[[f"tone_{t}" for t in ("metals", "us", "india")]
-               + [f"n_{t}" for t in ("metals", "us", "india")] + ["news_missing"]]
+    g = h.groupby(["session", "theme"])[score]
+    mean = g.mean().unstack()
+    count = g.size().unstack()
+    out = pd.DataFrame(index=pd.DatetimeIndex(sessions, name="date"))
+    for t in THEME_NAMES:
+        out[f"{prefix}_{t}"] = mean.get(t, pd.Series(dtype=float)).reindex(out.index).fillna(0.0)
+    for t in THEME_NAMES:
+        out[f"n_{t}"] = count.get(t, pd.Series(dtype=float)).reindex(out.index).fillna(0).astype(int)
+    out["news_missing"] = (out[[f"n_{t}" for t in THEME_NAMES]].sum(axis=1) == 0).astype(int)
+    return out
+
+
+def feature_names(score: str = "gdelt_tone") -> list[str]:
+    return [f"{PREFIX.get(score, score)}_{t}" for t in THEME_NAMES]
+
+
+# Kept so older code and notes still work.
+def tone_features(headlines, sessions, trusted_only=False):
+    return theme_features(headlines, sessions, "gdelt_tone", trusted_only)

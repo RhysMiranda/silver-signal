@@ -81,4 +81,4 @@ def test_tone_features_only_use_news_before_the_open():
     f = news_features.tone_features(heads, sessions)
     assert f.loc["2024-03-11", "tone_metals"] == -4.0
     assert f.loc["2024-03-12", "tone_metals"] == 9.0
-    assert f.loc["2024-03-11", "n_us"] == 0 and f["news_missing"].sum() == 0
+    assert f.loc["2024-03-11", "n_fed"] == 0 and f["news_missing"].sum() == 0

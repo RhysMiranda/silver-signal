@@ -1,0 +1,8 @@
+# Extra packages for FinBERT scoring with Spark (scripts/spark_score_news.py).
+# Also needs Java 17 or 21 installed (see README).
+-r requirements.txt
+pandas>=2.0,<3        # PySpark does not fully support pandas 3 yet
+pyspark>=3.5
+pyarrow
+transformers
+torch                 # on Windows, a smaller CPU-only build: see README

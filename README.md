@@ -125,6 +125,31 @@ Options: `--refresh` re-downloads prices, `--cost-bps 15` sets the round-trip co
 
 News: `python scripts\make_gdelt_sql.py --start 2024-01-01 --end 2025-01-01` prints a BigQuery query (a ready copy is in `sql\gdelt_headlines.sql`). Save the results as CSV in `data\news\raw\`, then `python scripts\clean_news.py` builds `data\news\headlines.csv` and prints a quality report.
 
+## FinBERT news scores with Spark
+
+Scores every headline with [FinBERT](https://huggingface.co/ProsusAI/finbert), a BERT model trained on financial news, in parallel across your CPU cores with Spark, then builds daily news moods with Spark SQL. The Spark job is tested to give exactly the same daily numbers as the pandas code used everywhere else.
+
+1. Install Java 17 or 21 (Spark needs it): [Eclipse Temurin](https://adoptium.net), and tick "Set JAVA_HOME" in the installer. Check with `java -version` in a new terminal.
+2. Install the extra packages. On Windows, install the smaller CPU-only PyTorch first:
+   ```
+   pip install torch --index-url https://download.pytorch.org/whl/cpu
+   pip install -r requirements-nlp.txt
+   ```
+3. A quick timing run on 2,000 headlines (downloads FinBERT, about 440 MB, once):
+   ```
+   python scripts\spark_score_news.py --etf SILVERBEES.NS --limit 2000
+   ```
+4. All headlines (writes `data\news\headlines_scored.parquet` and `data\news\daily_news.parquet`):
+   ```
+   python scripts\spark_score_news.py --etf SILVERBEES.NS
+   ```
+5. Compare FinBERT with GDELT tone:
+   ```
+   python scripts\news_test.py --etf SILVERBEES.NS --scorer both
+   ```
+
+News moods use five themes, because good news for the dollar is usually bad for silver while a Fed rate cut is usually good: metals, fed, dollar, us_data, india. `--scorer keyword` runs the whole pipeline with a crude stand-in scorer, for checking setup without the model. A "Did not find winutils.exe" warning on Windows is harmless here: output is written through pandas, not Hadoop.
+
 ## Layout
 
 ```
@@ -137,10 +162,12 @@ silver_signal/
   news.py           assigns headlines to sessions safely
   news_filter.py    what counts as a relevant headline (shared by SQL and Python)
   news_features.py  daily news moods per theme
+  finbert.py        FinBERT headline scoring
+  spark_news.py     the Spark job: parallel scoring and Spark SQL aggregation
   intraday.py       hourly silver vs the ETF during Indian trading hours
   synthetic.py      fake data with the real timing, for tests
 scripts/            run_baselines, news_test, check_prices, intraday_check,
-                    make_gdelt_sql, clean_news
+                    make_gdelt_sql, clean_news, spark_score_news
 sql/                ready-to-paste BigQuery query
 tests/              look-ahead, news cut-off, filters, walk-forward
 docs/               raw output tables
