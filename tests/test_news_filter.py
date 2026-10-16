@@ -27,6 +27,9 @@ KEEP = {
     "Copper prices fall on stronger US dollar": "dollar",
     "Will the dollar index recover at the beginning of 2024?": "dollar",
     "TREASURIES-U.S. Treasury yields climb as investors rein in rate-cut bets": "us_macro",
+    "Rupee slips to all-time low of 83.80 against US dollar in early trade": "rupee",
+    "India hikes gold and silver import duty to 15% to protect rupee": "india_duty",
+    "Gold surges over Rs 3,300 in this week, Silver crosses Rs 1.28 L mark": "silver",
 }
 DROP = [
     "India wins silver medal in men's 4x400m relay at Asian Games",
@@ -47,6 +50,11 @@ DROP = [
     "Naira extends gains against US Dollar at forex market",
     "AUD/USD declines into 0.6750 as Greenback lurches higher, China data beat bolsters Aussie",
     "Gold, Silver Prices On January 5; Check Prices In Mumbai, Delhi, Chennai, Kolkata",
+    # real headlines from the full 2022-2026 export
+    "Sri Lankan Rupee Records Modest Gains Against the US Dollar",
+    "Sri Lankan rupee appreciates against USD for week",
+    "Today Gold, Silver Rate January 11: Check 18, 22, 24 carat Gold prices in Chennai, Mumbai",
+    "Invesco Ltd: Form 8.3 - Dundee Precious Metals Inc; Public",
 ]
 
 

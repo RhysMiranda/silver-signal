@@ -51,7 +51,11 @@ def daily_features(headlines: pd.DataFrame, sessions: pd.DatetimeIndex, scorer) 
     g = h.groupby("session")["score"]
     feats = pd.DataFrame({"news_count": g.size(), "news_mean": g.mean(),
                           "news_sum": g.sum()})
-    return feats.reindex(sessions).fillna({"news_count": 0, "news_sum": 0.0})
+    feats = feats.reindex(sessions).fillna({"news_count": 0, "news_sum": 0.0})
+    # Zero headlines almost always means a data outage (e.g. GDELT in June 2025),
+    # not a quiet market. Flag it so a model can tell "no data" from "no news".
+    feats["news_missing"] = (feats["news_count"] == 0).astype(int)
+    return feats
 
 
 # A deliberately crude placeholder. Your FinBERT or LLM scorer should beat it.

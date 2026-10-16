@@ -59,14 +59,17 @@ JUNK = (r"\b(medal|medals|medallist|medalist|olympic|olympics|world cup|champion
         r"silver fox|adam silver|nate silver|silver city|quicksilver|silver surfer|"
         r"silver age|silver star|silver bells?|wedding|recipe|horoscope|crossword|"
         # other countries' prices and currencies (this project is about India and the US)
-        r"pakistan|pakistani|karachi|lahore|pkr|nepal|nepali|sri lanka|bangladesh|taka|"
+        r"pakistan|pakistani|karachi|lahore|pkr|nepal|nepali|nepalese|sri lanka|sri lankan|lankan|"
+        r"bangladesh|bangladeshi|taka|mauritian|seychelles|"
         r"doha|qatar|dubai|uae|saudi|riyadh|jeddah|muscat|bitcoin gold|kuwait|oman|bahrain|armenia|azerbaijan|nigeria|naira|"
         r"kenya|ghana|malaysia|ringgit|philippine|peso|yen|sterling|ringgit|rand|lira|baht|"
         r"aud/usd|nzd/usd|usd/cad|usd/jpy|gbp/usd|usd/mxn|loonie|aussie|kiwi|"
         # small-company stock chatter: tickers like (CVE:IPT) or (OTCMKTS:SLVTF)
         r"cve|tsxv|otcmkts|short interest|stock price (up|down)|shares (up|down)|"
         # daily price listing pages carry no news
-        r"check (latest )?(prices|rates)|rate today|rates today)\b")
+        r"check (latest )?(prices|rates)|rate today|rates today|carat|karat|"
+        # regulatory filings
+        r"form 8\.3|form 4|13f|sec filing)\b")
 
 # Outlets with reliable timestamps and real market coverage. Kept as a flag, not a filter.
 TRUSTED_SOURCES = (
