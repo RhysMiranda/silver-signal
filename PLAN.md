@@ -27,7 +27,7 @@ Daily bars run roughly 03:30 to 03:30 IST. The true window is 15:30 (yesterday's
 
 The hard, unglamorous part. The tools for it are ready:
 
-1. **Make the query.** `python scripts\make_gdelt_sql.py --start 2024-01-01 --end 2024-01-08` prints a BigQuery query (a copy is in `sql\gdelt_one_week_example.sql`). It keeps English originals only, drops sports and other junk, labels each headline (silver, precious metals, rupee, Fed, dollar, RBI, US macro, India import duty) and removes syndicated duplicates.
+1. **Make the query.** `python scripts\make_gdelt_sql.py --start 2024-01-01 --end 2024-01-08` prints a BigQuery query (a ready copy is in `sql\gdelt_headlines.sql`; change only its two dates). It keeps English originals only, drops sports and other junk, labels each headline (silver, precious metals, rupee, Fed, dollar, RBI, US macro, India import duty) and removes syndicated duplicates.
 2. **Run one week first** at https://console.cloud.google.com/bigquery. Before pressing Run, read "This query will process ... GB" and multiply by the number of weeks you want. Stay under the free 1 TB a month by doing a few months per calendar month if needed.
 3. **Export** each result as CSV into `data\news\raw\`.
 4. **Clean and review:** `python scripts\clean_news.py` combines the files, re-checks every headline, and prints counts by category, source and month, plus random samples. Read the samples. If junk gets through, add words to `JUNK` or tighten a category in `silver_signal\news_filter.py`, add the headline to `tests\test_news_filter.py`, and regenerate the query. Both the SQL and the cleaner use the same definitions.

@@ -20,6 +20,13 @@ KEEP = {
     "US CPI inflation cools more than expected in March": "us_macro",
     "Government cuts import duty on gold and silver to 6%": "india_duty",
     "Silver&#39;s rally: what&#39;s driving the metal higher": "silver",
+    # real headlines from the first GDELT export
+    "Silver Price Analysis: XAG/USD tumbles below $23 as US labor market conditions improve": "silver",
+    "Rupee rises four paise to close at 83.28 against U.S. dollar": "rupee",
+    "Gold slips to near two-week low as dollar firms ahead of Fed minutes": "precious_metals",
+    "Copper prices fall on stronger US dollar": "dollar",
+    "Will the dollar index recover at the beginning of 2024?": "dollar",
+    "TREASURIES-U.S. Treasury yields climb as investors rein in rate-cut bets": "us_macro",
 }
 DROP = [
     "India wins silver medal in men's 4x400m relay at Asian Games",
@@ -30,6 +37,16 @@ DROP = [
     "Cricketer donates prize money worth one lakh rupee to charity",
     "Every cloud has a silver lining, says coach",
     "Ramesh celebrates silver wedding anniversary",
+    # real headlines from the first GDELT export
+    "Rupee records back-to-back gain, settles at 281.67 against US dollar - Markets Pakistan",
+    "Gold Rate in Pakistan Today – 01 Jan 2024",
+    "Gold prices in Doha Today Sunday 7 January 2024",
+    "IMPACT Silver (CVE:IPT) Stock Price Down 5.1%",
+    "Silver Tiger Metals Inc. (OTCMKTS:SLVTF) Sees Significant Increase in Short Interest",
+    "Japanese Yen remains depressed for the third straight day against US Dollar",
+    "Naira extends gains against US Dollar at forex market",
+    "AUD/USD declines into 0.6750 as Greenback lurches higher, China data beat bolsters Aussie",
+    "Gold, Silver Prices On January 5; Check Prices In Mumbai, Delhi, Chennai, Kolkata",
 ]
 
 
@@ -62,3 +79,9 @@ def test_patterns_avoid_syntax_bigquery_rejects():
         for p in (topic, ctx or ""):
             assert not re.search(r"\(\?[=!<]|\\[1-9]", p), p
             assert "'" not in p   # would break the SQL string
+
+
+def test_blocked_sources():
+    assert nf.is_blocked_source("dnd.com.pk")
+    assert nf.is_blocked_source("brecorder.com")
+    assert not nf.is_blocked_source("thehindu.com")

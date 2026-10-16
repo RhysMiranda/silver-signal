@@ -41,6 +41,7 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
     df["category"] = df["title"].map(nf.categorize)
     df = df.dropna(subset=["category"])
     df["source"] = df["source"].astype(str).str.lower()
+    df = df[~df["source"].map(nf.is_blocked_source)]
     df["trusted"] = df["source"].map(nf.is_trusted)
     key = df["title"].str.lower().str.replace(r"[^a-z0-9]", "", regex=True)
     df = (df.assign(_k=key).sort_values("published_utc")

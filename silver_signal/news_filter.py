@@ -41,7 +41,9 @@ CATEGORIES: list[tuple[str, str, str | None]] = [
      r"decision|tightening|easing|dovish|hawkish)\b"),
     ("dollar",
      r"\b(dollar index|dxy|greenback|us dollar|u\.s\. dollar)\b",
-     None),
+     r"\b(index|dxy|greenback|strengthens|weakens|firms|slips|rallies|rally|falls|rises|gains|"
+     r"jumps|slides|steadies|surges|tumbles|softens|rebounds|strength|weakness|outlook|"
+     r"stronger|weaker|strong|weak|commodities|commodity|gold|silver|metals?)\b"),
     ("rbi",
      r"\b(rbi|reserve bank of india)\b",
      r"\b(repo|rate|rates|policy|mpc|inflation|liquidity)\b"),
@@ -55,7 +57,16 @@ JUNK = (r"\b(medal|medals|medallist|medalist|olympic|olympics|world cup|champion
         r"tournament|silver screen|silver lining|silver jubilee|silver anniversary|"
         r"silverware|silver spoon|silverback|silverstone|silver lake|silverado|silver alert|"
         r"silver fox|adam silver|nate silver|silver city|quicksilver|silver surfer|"
-        r"silver age|silver star|silver bells?|wedding|recipe|horoscope|crossword)\b")
+        r"silver age|silver star|silver bells?|wedding|recipe|horoscope|crossword|"
+        # other countries' prices and currencies (this project is about India and the US)
+        r"pakistan|pakistani|karachi|lahore|pkr|nepal|nepali|sri lanka|bangladesh|taka|"
+        r"doha|qatar|dubai|uae|saudi|riyadh|jeddah|muscat|bitcoin gold|kuwait|oman|bahrain|armenia|azerbaijan|nigeria|naira|"
+        r"kenya|ghana|malaysia|ringgit|philippine|peso|yen|sterling|ringgit|rand|lira|baht|"
+        r"aud/usd|nzd/usd|usd/cad|usd/jpy|gbp/usd|usd/mxn|loonie|aussie|kiwi|"
+        # small-company stock chatter: tickers like (CVE:IPT) or (OTCMKTS:SLVTF)
+        r"cve|tsxv|otcmkts|short interest|stock price (up|down)|shares (up|down)|"
+        # daily price listing pages carry no news
+        r"check (latest )?(prices|rates)|rate today|rates today)\b")
 
 # Outlets with reliable timestamps and real market coverage. Kept as a flag, not a filter.
 TRUSTED_SOURCES = (
@@ -64,8 +75,16 @@ TRUSTED_SOURCES = (
     "economictimes.indiatimes.com", "livemint.com", "business-standard.com",
     "moneycontrol.com", "financialexpress.com", "thehindubusinessline.com",
     "businesstoday.in", "ndtvprofit.com", "zeebiz.com", "thehindu.com",
-    "hindustantimes.com", "timesofindia.indiatimes.com",
+    "hindustantimes.com", "timesofindia.indiatimes.com", "indiatimes.com",
+    "marketscreener.com", "forexlive.com", "seekingalpha.com", "yahoo.com", "mining.com",
 )
+
+# Domains from countries whose local price pages swamp the feed. Dropped outright.
+BLOCKED_TLDS = (".pk", ".np", ".ng", ".az", ".am", ".lk", ".bd", ".qa", ".ae")
+# Pakistani outlets on .com/.tv domains: their "rupee" is the Pakistani rupee.
+BLOCKED_SOURCES = ("brecorder.com", "dawn.com", "thenews.com", "geo.tv", "arynews.tv",
+                   "samaa.tv", "dunyanews.tv", "express.com", "bolnews.com", "propakistani.com",
+                   "nagariknetwork.com", "albawaba.com")
 
 # Characters allowed besides plain ASCII: curly quotes, dashes, ellipsis, rupee sign, nbsp.
 _EXTRA_OK = "–—‘’“”…₹ "
@@ -98,6 +117,11 @@ def categorize(title: str) -> str | None:
         if topic.search(t) and (ctx is None or ctx.search(t)):
             return name
     return None
+
+
+def is_blocked_source(source: str) -> bool:
+    s = str(source).lower()
+    return s.endswith(BLOCKED_TLDS) or s in BLOCKED_SOURCES
 
 
 def is_trusted(source: str) -> bool:

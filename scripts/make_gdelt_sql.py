@@ -53,6 +53,8 @@ cleaned AS (
     AND LENGTH(title) BETWEEN 25 AND 220
     AND NOT REGEXP_CONTAINS(title, r'{nf.NON_ENGLISH_CHARS}')
     AND NOT REGEXP_CONTAINS(LOWER(title), r'{nf.JUNK}')
+    AND NOT REGEXP_CONTAINS(source, r'({"|".join(t.replace(".", "[.]") for t in nf.BLOCKED_TLDS)})$')
+    AND source NOT IN ({", ".join(f"'{d}'" for d in nf.BLOCKED_SOURCES)})
 ),
 labelled AS (
   SELECT *,
