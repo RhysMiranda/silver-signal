@@ -32,8 +32,8 @@ def assign_session(published: pd.Series, sessions: pd.DatetimeIndex) -> pd.Serie
     ts = pd.to_datetime(published)
     ts = ts.dt.tz_localize("UTC") if ts.dt.tz is None else ts.dt.tz_convert("UTC")
     sessions = pd.DatetimeIndex(sessions).sort_values()
-    opens = session_opens_utc(sessions)
-    pos = opens.searchsorted(ts, side="right")
+    opens = session_opens_utc(sessions).as_unit("ns")
+    pos = opens.searchsorted(ts.dt.as_unit("ns"), side="right")
     out = [sessions[i] if i < len(sessions) else pd.NaT for i in pos]
     return pd.Series(out, index=published.index, name="session")
 

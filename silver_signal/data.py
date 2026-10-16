@@ -46,9 +46,15 @@ def load(name: str, ticker: str, refresh: bool = False) -> pd.DataFrame:
     return pd.read_csv(path, index_col="date", parse_dates=["date"])
 
 
-def load_all(refresh: bool = False) -> dict[str, pd.DataFrame]:
+def load_all(refresh: bool = False, etf: str = config.ETF) -> dict[str, pd.DataFrame]:
+    """Prices for one silver ETF plus COMEX silver and USD/INR.
+
+    `etf` can be any Yahoo symbol, e.g. SILVERBEES.NS (Nippon India Silver ETF),
+    which has a longer history on Yahoo than HDFCSILVER.NS.
+    """
+    name = "etf" if etf == config.ETF else "etf_" + etf.split(".")[0].lower()
     return {
-        "etf": load("etf", config.ETF, refresh),
+        "etf": load(name, etf, refresh),
         "silver": load("silver", config.SILVER, refresh),
         "fx": load("usdinr", config.USDINR, refresh),
     }

@@ -21,13 +21,15 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--synthetic", action="store_true", help="use fake data (no network)")
     ap.add_argument("--refresh", action="store_true", help="re-download prices")
+    ap.add_argument("--etf", default=config.ETF,
+                    help="Yahoo symbol of the silver ETF, e.g. SILVERBEES.NS for a longer history")
     ap.add_argument("--cost-bps", type=float, default=config.DEFAULT_COST_BPS,
                     help="round-trip cost in basis points")
     ap.add_argument("--min-train", type=int, default=120, help="days before the first forecast")
     ap.add_argument("--step", type=int, default=20, help="days predicted per refit")
     args = ap.parse_args()
 
-    raw = synthetic.make() if args.synthetic else data.load_all(refresh=args.refresh)
+    raw = synthetic.make() if args.synthetic else data.load_all(refresh=args.refresh, etf=args.etf)
     panel = features.build_panel(raw["etf"], raw["silver"], raw["fx"])
     print(f"{len(panel)} trading days, {panel.index[0].date()} to {panel.index[-1].date()}"
           + ("  [SYNTHETIC]" if args.synthetic else ""))
@@ -58,7 +60,7 @@ def main() -> None:
     print(f"\nTrading ret_oc: buy at open, sell at close, {args.cost_bps:g} bps round trip")
     print(bt.to_string(index=False, float_format=lambda x: f"{x:.3f}"))
 
-    out = config.RESULTS_DIR / ("synthetic" if args.synthetic else "real")
+    out = config.RESULTS_DIR / ("synthetic" if args.synthetic else "real_" + args.etf.split(".")[0].lower())
     out.mkdir(parents=True, exist_ok=True)
     acc.to_csv(out / "accuracy.csv", index=False)
     bt.to_csv(out / "backtest.csv", index=False)

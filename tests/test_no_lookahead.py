@@ -67,3 +67,18 @@ def test_overnight_rule_finds_signal_in_synthetic_data():
     acc = evaluate.accuracy(panel["ret_cc"], pred)
     assert acc["hit_rate"] > 0.6     # silver drives the ETF by construction
     assert np.isfinite(acc["mae_bps"])
+
+
+def test_tone_features_only_use_news_before_the_open():
+    from silver_signal import news_features
+    sessions = pd.to_datetime(["2024-03-11", "2024-03-12"])
+    heads = pd.DataFrame({
+        "published_utc": pd.to_datetime(["2024-03-11 03:30", "2024-03-11 03:46"]).tz_localize("UTC"),
+        "title": ["a", "b"], "category": ["silver", "silver"],
+        "gdelt_tone": [-4.0, 9.0], "trusted": [True, True],
+    })
+    # 03:30 UTC = 09:00 IST Monday -> Monday.  03:46 UTC = 09:16 IST Monday -> Tuesday.
+    f = news_features.tone_features(heads, sessions)
+    assert f.loc["2024-03-11", "tone_metals"] == -4.0
+    assert f.loc["2024-03-12", "tone_metals"] == 9.0
+    assert f.loc["2024-03-11", "n_us"] == 0 and f["news_missing"].sum() == 0
