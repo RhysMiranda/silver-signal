@@ -18,6 +18,7 @@ import pandas as pd
 from . import news_features as nfeat
 
 ROOT = Path(__file__).resolve().parent.parent
+WORKER_SOCKET_TIMEOUT_S = 3600
 
 
 def scorer(kind: str):
@@ -31,37 +32,69 @@ def scorer(kind: str):
     return finbert.get_model(threads=threads).probs
 
 
-def spark_session(cores: int):
+def _worker_log() -> None:
+    """If SILVER_SIGNAL_WORKER_LOG is set, send this worker's crash output
+    (including C-level messages from torch/OpenMP) to data/logs/worker_<pid>.log."""
+    if not os.environ.get("SILVER_SIGNAL_WORKER_LOG") or getattr(_worker_log, "done", False):
+        return
+    import faulthandler
+    d = ROOT / "data" / "logs"
+    d.mkdir(parents=True, exist_ok=True)
+    f = open(d / f"worker_{os.getpid()}.log", "a", buffering=1)
+    os.dup2(f.fileno(), 2)
+    faulthandler.enable(file=f, all_threads=True)
+    f.write(f"worker {os.getpid()} started, python {sys.executable}\n")
+    _worker_log.done = True
+
+
+def spark_session(cores: int, conf: dict | None = None, env: dict | None = None):
     from pyspark.sql import SparkSession
 
     os.environ.setdefault("PYSPARK_PYTHON", sys.executable)
     os.environ.setdefault("PYSPARK_DRIVER_PYTHON", sys.executable)
     os.environ["SILVER_SIGNAL_TORCH_THREADS"] = str(max(1, (os.cpu_count() or 2) // cores))
+    # On Windows, PySpark's Python workers keep the 15-second socket timeout they use
+    # while connecting, so any batch that takes longer than 15 s (FinBERT does) kills
+    # the worker silently. Linux and macOS use a different code path and aren't affected.
+    os.environ["SPARK_AUTH_SOCKET_TIMEOUT"] = str(WORKER_SOCKET_TIMEOUT_S)
     # let Spark's Python workers import the silver_signal package
     os.environ["PYTHONPATH"] = os.pathsep.join(
         p for p in (str(ROOT), os.environ.get("PYTHONPATH", "")) if p)
-    return (SparkSession.builder.master(f"local[{cores}]").appName("silver-signal-news")
+    b = (SparkSession.builder.master(f"local[{cores}]").appName("silver-signal-news")
             .config("spark.sql.session.timeZone", "UTC")
             .config("spark.sql.execution.arrow.pyspark.enabled", "true")
             .config("spark.sql.execution.arrow.maxRecordsPerBatch", "512")
             .config("spark.driver.memory", "4g")
             .config("spark.ui.showConsoleProgress", "true")
             .config("spark.executorEnv.PYTHONPATH", str(ROOT))
+            .config("spark.python.authenticate.socketTimeout", f"{WORKER_SOCKET_TIMEOUT_S}s")
+            .config("spark.executorEnv.SPARK_AUTH_SOCKET_TIMEOUT", str(WORKER_SOCKET_TIMEOUT_S))
             .config("spark.executorEnv.SILVER_SIGNAL_TORCH_THREADS",
                     os.environ["SILVER_SIGNAL_TORCH_THREADS"])
             # print the real Python error if a worker dies, not just "crashed"
             .config("spark.python.worker.faulthandler.enabled", "true")
-            .config("spark.sql.execution.pyspark.udf.faulthandler.enabled", "true")
-            .getOrCreate())
+            .config("spark.sql.execution.pyspark.udf.faulthandler.enabled", "true"))
+    for k, v in (conf or {}).items():
+        b = b.config(k, v)
+    for k, v in (env or {}).items():
+        b = b.config(f"spark.executorEnv.{k}", v)
+    return b.getOrCreate()
 
 
 def run(headlines: pd.DataFrame, sessions: pd.DatetimeIndex, scorer_kind: str, cores: int,
-        partitions: int) -> tuple[pd.DataFrame, pd.DataFrame]:
+        partitions: int, conf: dict | None = None,
+        env: dict | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    spark = spark_session(cores, conf, env)
+    spark.sparkContext.setLogLevel("ERROR")
+    try:
+        return _run(spark, headlines, sessions, scorer_kind, partitions)
+    finally:
+        spark.stop()
+
+
+def _run(spark, headlines, sessions, scorer_kind, partitions):
     from pyspark.sql import functions as F
     from pyspark.sql.functions import pandas_udf
-
-    spark = spark_session(cores)
-    spark.sparkContext.setLogLevel("ERROR")
 
     h = headlines[["published_utc", "title", "source", "category", "gdelt_tone", "trusted"]].copy()
     h["published_utc"] = (pd.to_datetime(h["published_utc"], utc=True)
@@ -74,6 +107,7 @@ def run(headlines: pd.DataFrame, sessions: pd.DatetimeIndex, scorer_kind: str, c
 
     @pandas_udf("p_pos double, p_neg double, p_neu double")
     def score_udf(batches: Iterator[pd.Series]) -> Iterator[pd.DataFrame]:
+        _worker_log()
         score = scorer_fn(scorer_kind)
         for titles in batches:
             p = score(titles.tolist())
@@ -116,7 +150,6 @@ def run(headlines: pd.DataFrame, sessions: pd.DatetimeIndex, scorer_kind: str, c
 
     per_headline = scored.toPandas()
     daily_pd = daily.toPandas()
-    spark.stop()
 
     # pivot names come out as "<theme>_<agg>"; rename to "<agg>_<theme>"
     daily_pd = daily_pd.rename(columns={f"{t}_{a}": f"{a}_{t}" for t in nfeat.THEME_NAMES
