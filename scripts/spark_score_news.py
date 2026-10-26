@@ -39,11 +39,17 @@ def main() -> None:
     ap.add_argument("--headlines", type=Path, default=config.DATA_DIR / "news" / "headlines.csv")
     ap.add_argument("--etf", default=config.ETF, help="whose trading calendar to use")
     ap.add_argument("--scorer", choices=["finbert", "keyword"], default="finbert")
-    ap.add_argument("--cores", type=int, default=max(1, (os.cpu_count() or 2) - 1))
+    ap.add_argument("--cores", type=int, default=None,
+                    help="Spark workers. Each FinBERT worker holds its own ~1.5 GB copy of the "
+                         "model, so the default for finbert is 4; keyword can use every core.")
     ap.add_argument("--partitions", type=int, default=None)
     ap.add_argument("--limit", type=int, default=None, help="score only the first N headlines")
     ap.add_argument("--out-dir", type=Path, default=config.DATA_DIR / "news")
     a = ap.parse_args()
+
+    if a.cores is None:
+        cpus = os.cpu_count() or 2
+        a.cores = min(4, max(1, cpus // 2)) if a.scorer == "finbert" else max(1, cpus - 1)
 
     heads = nfeat.load_headlines(a.headlines)
     if a.limit:

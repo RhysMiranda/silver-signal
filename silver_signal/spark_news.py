@@ -25,7 +25,10 @@ def scorer(kind: str):
     from silver_signal import finbert
     if kind == "keyword":
         return finbert.keyword_probs
-    return finbert.get_model().probs
+    # Each Spark worker is its own Python process with its own copy of the model,
+    # so split the CPU threads between them instead of letting each grab them all.
+    threads = int(os.environ.get("SILVER_SIGNAL_TORCH_THREADS", "1"))
+    return finbert.get_model(threads=threads).probs
 
 
 def spark_session(cores: int):
@@ -33,16 +36,22 @@ def spark_session(cores: int):
 
     os.environ.setdefault("PYSPARK_PYTHON", sys.executable)
     os.environ.setdefault("PYSPARK_DRIVER_PYTHON", sys.executable)
+    os.environ["SILVER_SIGNAL_TORCH_THREADS"] = str(max(1, (os.cpu_count() or 2) // cores))
     # let Spark's Python workers import the silver_signal package
     os.environ["PYTHONPATH"] = os.pathsep.join(
         p for p in (str(ROOT), os.environ.get("PYTHONPATH", "")) if p)
     return (SparkSession.builder.master(f"local[{cores}]").appName("silver-signal-news")
             .config("spark.sql.session.timeZone", "UTC")
             .config("spark.sql.execution.arrow.pyspark.enabled", "true")
-            .config("spark.sql.execution.arrow.maxRecordsPerBatch", "2000")
+            .config("spark.sql.execution.arrow.maxRecordsPerBatch", "512")
             .config("spark.driver.memory", "4g")
             .config("spark.ui.showConsoleProgress", "true")
             .config("spark.executorEnv.PYTHONPATH", str(ROOT))
+            .config("spark.executorEnv.SILVER_SIGNAL_TORCH_THREADS",
+                    os.environ["SILVER_SIGNAL_TORCH_THREADS"])
+            # print the real Python error if a worker dies, not just "crashed"
+            .config("spark.python.worker.faulthandler.enabled", "true")
+            .config("spark.sql.execution.pyspark.udf.faulthandler.enabled", "true")
             .getOrCreate())
 
 
