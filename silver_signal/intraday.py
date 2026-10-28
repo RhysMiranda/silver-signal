@@ -124,3 +124,64 @@ def by_premium_quintile(d: pd.DataFrame) -> pd.DataFrame:
         "silver_daytime_bps": g["silver_day"].mean() * 1e4,
         "gap_bps": g["day_gap"].mean() * 1e4,
     }).round(1)
+
+
+# --- The 10:15 check -------------------------------------------------------
+# The premium slope above shares one price, the ETF's 09:15 open, between its
+# x (open premium) and y (daytime gap), so any noise in that single print
+# pushes the slope negative on its own. Measuring the giveback from 10:15
+# onwards, with the ETF's own hourly bars, uses a different ETF price for y.
+# If the premium still unwinds after 10:15, the effect is real, not an
+# artefact. It is also the tradable version: wait an hour, then decide.
+
+CHECK_IST = datetime.strptime("10:15", "%H:%M").time()
+
+
+def build_1015(d: pd.DataFrame, etf: pd.DataFrame, etf_h: pd.DataFrame,
+               silver_h: pd.DataFrame, fx_h: pd.DataFrame) -> pd.DataFrame:
+    """Add the 09:15->10:15 and 10:15->15:30 legs to `build`'s output.
+
+    NSE hourly bars start at 09:15, 10:15, ... IST, so the ETF at 10:15 is a
+    bar open. Silver bars start on the UTC hour, so silver is taken at 10:30
+    IST, the nearest bar; that 15-minute mismatch adds noise, not bias.
+    """
+    days = d.index
+    t = _ist(days, CHECK_IST)
+    e = price_at(etf_h, t).to_numpy()
+    s = price_at(silver_h, t).to_numpy() * price_at(fx_h, t).to_numpy()
+    t_open, t_close = _ist(days, config.OPEN_IST), _ist(days, config.CLOSE_IST)
+    s_open = price_at(silver_h, t_open).to_numpy() * price_at(fx_h, t_open).to_numpy()
+    s_close = price_at(silver_h, t_close).to_numpy() * price_at(fx_h, t_close).to_numpy()
+    o, c = etf.loc[days, "open"].to_numpy(), etf.loc[days, "close"].to_numpy()
+
+    out = d.copy()
+    out["etf_first_hour"] = e / o - 1
+    out["etf_rest"] = c / e - 1
+    out["silver_first_hour"] = s / s_open - 1
+    out["silver_rest"] = s_close / s - 1
+    out["gap_first_hour"] = (1 + out["etf_first_hour"]) / (1 + out["silver_first_hour"]) - 1
+    out["gap_rest"] = (1 + out["etf_rest"]) / (1 + out["silver_rest"]) - 1
+    return out.dropna()
+
+
+def report_1015(d: pd.DataFrame) -> dict:
+    def total(x):
+        return float(np.expm1(np.log1p(x).sum()))
+
+    def tstat(x):
+        return float(x.mean() / x.std() * np.sqrt(len(x)))
+
+    x = d["open_premium"]
+    return {
+        "days": len(d),
+        "etf_0915_close_total": total(d["etf_day"]),
+        "etf_1015_close_total": total(d["etf_rest"]),
+        "silver_1015_close_total": total(d["silver_rest"]),
+        "gap_first_hour_bps": float(d["gap_first_hour"].mean() * 1e4),
+        "gap_first_hour_t": tstat(d["gap_first_hour"]),
+        "gap_rest_bps": float(d["gap_rest"].mean() * 1e4),
+        "gap_rest_t": tstat(d["gap_rest"]),
+        "slope_first_hour": float(np.polyfit(x, d["gap_first_hour"], 1)[0]),
+        "slope_rest": float(np.polyfit(x, d["gap_rest"], 1)[0]),
+        "corr_rest": float(x.corr(d["gap_rest"])),
+    }
