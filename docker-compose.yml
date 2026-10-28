@@ -1,4 +1,5 @@
-# Airflow (one container, `airflow standalone`) + a local MongoDB.
+# Airflow (one container, `airflow standalone`), a local MongoDB,
+# the read-only API (http://localhost:8000/docs) and the dashboard (http://localhost:3000).
 #
 #   docker compose up -d
 #   open http://localhost:8080   (user: admin, password: see README)
@@ -31,6 +32,18 @@ services:
       - ./data:/opt/silver-signal/data
       - ./results:/opt/silver-signal/results
       - airflow-home:/opt/airflow
+
+  api:
+    build: { context: ., dockerfile: api/Dockerfile }
+    ports: ["8000:8000"]
+    depends_on: [mongo]
+    environment:
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017}
+
+  dashboard:
+    build: { context: ./dashboard, args: { VITE_API_URL: "http://localhost:8000" } }
+    ports: ["3000:80"]
+    depends_on: [api]
 
 volumes:
   mongo-data:

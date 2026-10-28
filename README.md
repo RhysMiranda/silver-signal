@@ -207,6 +207,16 @@ It also stores the first-hour gap (ETF minus silver, 09:15 to 10:15), the number
 
 Without Docker: `python scripts\paper_trade.py --etf SILVERBEES.NS --dry-run` prints the records without saving them. To use MongoDB Atlas instead of the local database, create a free cluster, then put `MONGODB_URI=mongodb+srv://...` in a `.env` file next to `docker-compose.yml` (it's in `.gitignore`) and run `docker compose up -d` again.
 
+## API and dashboard
+
+A read-only FastAPI service (`api/`) serves the paper-trading records from MongoDB (`/summary`, `/trades`, `/equity`, `/health`; interactive docs at `/docs`), and a React dashboard (`dashboard/`, Vite + Recharts) shows each strategy's growth, the first-hour gap over time, and the latest sessions. Both start with the rest:
+
+```
+docker compose up -d --build
+```
+
+Then open http://localhost:3000 (dashboard) and http://localhost:8000/docs (API).
+
 ## Layout
 
 ```

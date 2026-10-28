@@ -6,3 +6,5 @@ data/
 results/
 *_log.txt
 .env
+dashboard/node_modules/
+dashboard/dist/
