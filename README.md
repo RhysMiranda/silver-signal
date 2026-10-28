@@ -121,6 +121,15 @@ The slope above shares one price, the 09:15 open, between its two sides, so nois
 
 The ETF opens rich on average and corrects within about an hour; after 10:15 it tracks silver, and the size of the opening premium no longer predicts anything. The −17.9 bps average can't come from random noise in the opening print, which would average out; a systematically high open can. Practical reading: anyone buying this ETF during the day does better waiting until after 10:15. Costs are not included here, and the ETF still lagged silver after 10:15.
 
+### 5c. Robustness (R): real, but fading
+
+`Rscript R/robustness.R` re-tests the first-hour result with autocorrelation-robust (Newey-West) errors, a 10-day block bootstrap, outlier trimming and half-year splits.
+
+- Newey-West: first-hour gap −17.9 bps, t = −4.0; after 10:15, −1.9 bps, t = −0.7. Same as before.
+- Block bootstrap: waiting until 10:15 added +130% over the period (95% CI +43% to +297%); no draw out of 5,000 was negative.
+- Not driven by outliers: median −12.4 bps; trimming the extreme 1% of days gives −14.6 bps (t = −4.0); 61% of days negative.
+- **But it is fading:** −36 bps a day in 2024 H2, −24 in 2025 H1, −17 in 2025 H2, −5 in 2026 H1, +6 in 2026 H2 so far. The pattern has disappeared in 2026, perhaps as more traders noticed it or as the ETF's market makers tightened its pricing. A strategy built on it now would be trading on history.
+
 ### 6. What this does not mean
 
 It is not a free trade. NSE's official close is a volume-weighted average of the last 30 minutes, not a single price you can trade at, and costs on a daily round trip add up quickly.
