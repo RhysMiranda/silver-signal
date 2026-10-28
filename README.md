@@ -105,6 +105,22 @@ The richer the open, the bigger the same-day giveback (slope −0.62, correlatio
 
 Caveat: the slope is partly mechanical, because the opening price appears in both the premium and the giveback, so noise in it (an odd opening-auction print, or silver measured at 09:30 rather than 09:15) pushes the slope negative by itself. The average daily gap does not share that problem and is the stronger evidence. Next check: measure the giveback from 10:15 using hourly ETF prices, so the opening price is used only once.
 
+### 5b. The giveback happens in the first hour
+
+The slope above shares one price, the 09:15 open, between its two sides, so noise in that print could create it. `scripts/intraday_1015.py` splits the day at 10:15 IST using the ETF's own hourly bars (511 sessions, May 2024 to Oct 2026):
+
+| ETF minus silver | Average per day | t | Slope on opening premium |
+|---|---|---|---|
+| 09:15–10:15 | −17.9 bps | −4.0 | −0.57 (partly mechanical) |
+| 10:15–15:30 | −1.9 bps | −0.7 | −0.05 (no shared price) |
+
+| Total ETF return | |
+|---|---|
+| buy 09:15, sell 15:30 | −50.1% |
+| buy 10:15, sell 15:30 | +14.8% (silver, same hours: +27.6%) |
+
+The ETF opens rich on average and corrects within about an hour; after 10:15 it tracks silver, and the size of the opening premium no longer predicts anything. The −17.9 bps average can't come from random noise in the opening print, which would average out; a systematically high open can. Practical reading: anyone buying this ETF during the day does better waiting until after 10:15. Costs are not included here, and the ETF still lagged silver after 10:15.
+
 ### 6. What this does not mean
 
 It is not a free trade. NSE's official close is a volume-weighted average of the last 30 minutes, not a single price you can trade at, and costs on a daily round trip add up quickly.
