@@ -51,6 +51,11 @@ def _jsonable(df: pd.DataFrame) -> list[dict]:
     return df.replace({np.nan: None}).to_dict(orient="records")
 
 
+@app.get("/")
+def index():
+    return {"name": "silver-signal", "endpoints": ["/summary", "/trades", "/equity", "/health", "/docs"]}
+
+
 @app.get("/health")
 def health():
     try:
