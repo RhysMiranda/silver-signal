@@ -5,9 +5,9 @@ import {
 
 const API = (import.meta.env.VITE_API_URL || "http://localhost:8000").replace(/\/+$/, "");
 const STRATS = [
-  { key: "overnight_rule", label: "Overnight rule", color: "#2563eb" },
-  { key: "buy_0915", label: "Buy 09:15", color: "#dc2626" },
-  { key: "wait_1015", label: "Buy 10:15", color: "#16a34a" },
+  { key: "overnight_rule", label: "Overnight rule", color: "#3346F0" },
+  { key: "buy_0915", label: "Buy 09:15", color: "#F2557A" },
+  { key: "wait_1015", label: "Buy 10:15", color: "#0E1A2B" },
 ];
 const pct = (x) => (x == null ? "–" : `${x >= 0 ? "+" : ""}${(x * 100).toFixed(1)}%`);
 const bps = (x) => (x == null ? "–" : `${x >= 0 ? "+" : ""}${x.toFixed(1)} bps`);
@@ -36,13 +36,15 @@ export default function App() {
   return (
     <main>
       <header>
+        <a className="back" href="https://rhysmiranda.github.io/">← Rhys Miranda</a>
         <h1>silver-signal</h1>
         <p>Paper trading SILVERBEES · {summary.sessions} sessions, {summary.from} to {summary.to} · costs included</p>
+        <p className="links"><a href="https://github.com/RhysMiranda/silver-signal">Code and research write-up</a></p>
       </header>
 
       <section className="tiles">
         {STRATS.map((s) => (
-          <div className="tile" key={s.key} style={{ borderColor: s.color }}>
+          <div className="tile" key={s.key} style={{ borderLeftColor: s.color }}>
             <span>{s.label}</span>
             <strong>{pct(summary[`${s.key}_total`])}</strong>
             <small>{summary[`${s.key}_days`]} days</small>
@@ -59,7 +61,7 @@ export default function App() {
         <h2>Growth of ₹1</h2>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={equity}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#D6DAD2" />
             <XAxis dataKey="date" minTickGap={40} />
             <YAxis domain={["auto", "auto"]} tickFormatter={(v) => v.toFixed(2)} />
             <Tooltip formatter={(v) => v.toFixed(3)} />
@@ -77,12 +79,12 @@ export default function App() {
         <p className="note">Below zero: the ETF opened rich and gave it back by 10:15. This faded to zero in 2026; the chart shows whether it returns.</p>
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={equity}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#D6DAD2" />
             <XAxis dataKey="date" minTickGap={40} />
             <YAxis tickFormatter={(v) => `${v.toFixed(0)}`} unit=" bps" width={70} />
             <Tooltip formatter={(v) => bps(v)} />
             <ReferenceLine y={0} stroke="#9ca3af" />
-            <Line dataKey="gap_bps_20d" name="Gap" stroke="#7c3aed" dot={false} strokeWidth={2} connectNulls />
+            <Line dataKey="gap_bps_20d" name="Gap" stroke="#3346F0" dot={false} strokeWidth={2} connectNulls />
           </LineChart>
         </ResponsiveContainer>
       </section>
@@ -109,7 +111,7 @@ export default function App() {
           </table>
         </div>
       </section>
-      <footer>Not financial advice. Research and code: github.com/RhysMiranda/silver-signal</footer>
+      <footer>Not financial advice.</footer>
     </main>
   );
 }
