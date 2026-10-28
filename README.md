@@ -181,6 +181,32 @@ The full run took 84 minutes on a 16-thread laptop (4 Spark workers, 4 PyTorch t
 
 On Windows, PySpark's Python workers keep the 15-second timeout they use while connecting to Spark, so any batch that takes longer (FinBERT's do) kills the worker with only "Python worker exited unexpectedly". `spark_news.py` raises that timeout for this job. If workers still die, `python scripts\finbert_doctor.py` tests FinBERT and Spark separately and together, and saves each worker's crash output to `data\logs\`.
 
+## Daily paper trading (Airflow + MongoDB)
+
+An Airflow DAG runs at 16:15 IST on weekdays: fetch prices, paper-trade the session, report running totals. Each session gets one MongoDB record, built only from what was knowable at each decision. Three long-or-flat paper strategies, costs included:
+
+- `overnight_rule`: at 09:15, buy if last night's silver × rupee forecast beats the cost (the model is refitted every day on past sessions only)
+- `buy_0915`: buy every day at 09:15 (the benchmark)
+- `wait_1015`: buy every day at 10:15 instead, to see whether the first-hour giveback comes back
+
+It also stores the first-hour gap (ETF minus silver, 09:15 to 10:15), the number to watch.
+
+1. Start Airflow and a local MongoDB (the first start takes a few minutes while packages install):
+   ```
+   docker compose up -d
+   ```
+2. Get the Airflow password, then open http://localhost:8080 and log in as `admin`:
+   ```
+   docker compose exec airflow cat /opt/airflow/standalone_admin_password.txt
+   ```
+3. Turn on `silver_signal_daily`, and press ▶ to run it now.
+4. Backfill past sessions so there's history to look at:
+   ```
+   docker compose exec airflow python /opt/silver-signal/scripts/paper_trade.py --etf SILVERBEES.NS --days 120
+   ```
+
+Without Docker: `python scripts\paper_trade.py --etf SILVERBEES.NS --dry-run` prints the records without saving them. To use MongoDB Atlas instead of the local database, create a free cluster, then put `MONGODB_URI=mongodb+srv://...` in a `.env` file next to `docker-compose.yml` (it's in `.gitignore`) and run `docker compose up -d` again.
+
 ## Layout
 
 ```

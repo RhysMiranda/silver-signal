@@ -1,0 +1,37 @@
+# Airflow (one container, `airflow standalone`) + a local MongoDB.
+#
+#   docker compose up -d
+#   open http://localhost:8080   (user: admin, password: see README)
+#
+# To use MongoDB Atlas instead of the local database, put
+#   MONGODB_URI=mongodb+srv://...
+# in a .env file next to this one.
+services:
+  mongo:
+    image: mongo:7.0
+    ports: ["27017:27017"]
+    volumes: [mongo-data:/data/db]
+
+  airflow:
+    image: apache/airflow:2.10.5-python3.11
+    command: standalone
+    ports: ["8080:8080"]
+    depends_on: [mongo]
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DEFAULT_TIMEZONE: "Asia/Kolkata"
+      _PIP_ADDITIONAL_REQUIREMENTS: "yfinance>=0.2.40 pymongo>=4.6 tzdata"
+      SILVER_SIGNAL_HOME: /opt/silver-signal
+      SILVER_SIGNAL_ETF: SILVERBEES.NS
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017}
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./silver_signal:/opt/silver-signal/silver_signal
+      - ./scripts:/opt/silver-signal/scripts
+      - ./data:/opt/silver-signal/data
+      - ./results:/opt/silver-signal/results
+      - airflow-home:/opt/airflow
+
+volumes:
+  mongo-data:
+  airflow-home:
