@@ -3,7 +3,7 @@ import {
   CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API = (import.meta.env.VITE_API_URL || "http://localhost:8000").replace(/\/+$/, "");
 const STRATS = [
   { key: "overnight_rule", label: "Overnight rule", color: "#2563eb" },
   { key: "buy_0915", label: "Buy 09:15", color: "#dc2626" },
