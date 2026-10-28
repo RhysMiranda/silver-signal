@@ -1,62 +1,59 @@
 # silver-signal
 
-Does the news tell you anything about **HDFC Silver ETF** (NSE: HDFCSILVER) that last night's silver and rupee moves don't already?
+Can the morning's news predict Indian silver ETFs, once you account for what silver and the rupee did overnight?
 
-The ETF holds physical silver, so its price is mostly the international silver price converted into rupees. By the time NSE opens at 09:15 IST, silver has traded all night in New York and London. A news model that ignores this will look clever and still lose to a one-line rule. So this project starts from that rule and asks whether headlines add anything on top of it.
+Silver ETFs on NSE hold physical silver, so their price is mostly the international silver price in rupees. By the 09:15 IST open, silver has already traded all night in London and New York. This project starts from that one-line rule, tests whether 234,000 news headlines add anything on top of it, and then follows up on what the data showed instead.
 
-## The question, precisely
+**Live dashboard:** [rhysmiranda.github.io/silver-signal](https://rhysmiranda.github.io/silver-signal/), daily paper trading since May 2026.
 
-At 09:15 IST each trading day, using only information published before then:
+## Findings
 
-1. Can we predict today's **close-to-close** return? (Includes the opening gap. Easy to predict, impossible to trade from a 09:15 forecast.)
-2. Can we predict today's **open-to-close** return? (What you can actually capture by buying at the open and selling at the close.)
-3. Does adding news beat the baselines below on question 2, after trading costs?
+1. **Last night's silver and rupee moves predict the ETF's day.** The overnight rule calls close-to-close direction 67% of the time, and the tradable open-to-close direction 56% (95% interval 53–59%).
+2. **News adds nothing.** Headlines scored by GDELT's tone and by FinBERT both perform at chance on their own (50–51%) and make the overnight rule slightly worse when added.
+3. **The ETF's gains all came overnight.** Over four years, Indian trading hours lost money in every full year, while silver itself rose during those hours.
+4. **The cause is the opening price.** The ETF opened 18 bps a day rich compared with silver (t = −4.0) and gave it back within the first hour. After 10:15 it tracked silver. Buying at 10:15 rather than 09:15 turned −50% into +15% over two years.
+5. **That edge has faded.** It was −36 bps a day in late 2024 and is gone in 2026. The daily pipeline tracks whether it returns.
 
-## Timeline (IST)
+## Method
 
-```
- day t-1                                         day t
- 15:30 ETF closes ... ~03:30 COMEX daily bar ... 09:15 ETF opens ........ 15:30 ETF closes
-                      (Yahoo dates it t-1)       ^ forecast made here
-```
+At 09:15 IST each day, using only information published before then:
 
-The newest silver or USD/INR bar a forecast for day *t* may use is the last one dated strictly **before** *t*. A headline may only inform the first session whose 09:15 open comes **after** it was published. Both rules are enforced in code and tested.
-
-## Baselines
-
-| Model | Idea |
+| Target | What it means |
 |---|---|
-| `zero` | Predict no change (the bar for error metrics) |
-| `historical_mean` | Predict the average return so far |
-| `yesterday` | Today repeats yesterday |
-| `overnight_rule` | Today's move ≈ overnight silver move × rupee move, with a fitted slope |
-| `gap_rule` | Open-to-close only: does the day continue or reverse its opening gap? |
+| close-to-close return | includes the opening gap; easy to predict, impossible to trade from a 09:15 forecast |
+| open-to-close return | what buying at the open and selling at the close actually captures |
 
-Every model is scored **walk-forward**: fit on everything before a 20-day block, predict the block, move on. Nothing is ever tested on data it trained on.
+The newest silver or USD/INR bar a forecast may use is the last one dated strictly before the session. A headline may only inform the first session whose open comes after it was published. Both rules are enforced in code and tested.
+
+| Baseline | Idea |
+|---|---|
+| `zero` | no change |
+| `historical_mean` | the average return so far |
+| `yesterday` | today repeats yesterday |
+| `overnight_rule` | overnight silver × rupee move, with a fitted slope |
+| `gap_rule` | does the day continue or reverse its opening gap? |
+
+Every model is scored walk-forward: fit on everything before a 20-day block, predict the block, move on. Trading results are long-or-flat with a 10 bp round-trip cost.
+
+The main results use Nippon India Silver ETF (SILVERBEES), because Yahoo Finance only has HDFC Silver ETF prices from March 2025. Both hold physical silver. SILVERBEES gives 1,016 trading days (September 2022 to October 2026), 896 of them scored out of sample.
 
 ## Results
 
-Main results use **Nippon India Silver ETF (SILVERBEES)** as a proxy, because Yahoo Finance only has HDFC Silver ETF prices from March 2025. Both ETFs hold physical silver and track the same domestic silver price. SILVERBEES gives 1,016 trading days (Sept 2022 to Oct 2026), of which 896 are scored out of sample. Raw tables, including the HDFC-only run, are in [docs/raw_results.md](docs/raw_results.md).
-
-### 1. Overnight silver and rupee moves explain most of the ETF's day
+### Overnight moves explain most of the day
 
 | Target | Model | Hit rate (95% interval) | Rank corr. |
 |---|---|---|---|
-| Close-to-close | overnight rule | **67.1%** (64.0–70.2%) | 0.455 |
-| Close-to-close | historical mean | 53.2% (49.9–56.5%) | −0.013 |
-| Open-to-close | overnight rule | **55.9%** (52.6–59.1%) | 0.154 |
-| Open-to-close | historical mean | 50.8% (47.5–54.1%) | 0.010 |
-| Open-to-close | gap rule | 45.3% (42.0–48.5%) | −0.149 |
+| close-to-close | overnight rule | **67.1%** (64.0–70.2%) | 0.455 |
+| close-to-close | historical mean | 53.2% (49.9–56.5%) | −0.013 |
+| open-to-close | overnight rule | **55.9%** (52.6–59.1%) | 0.154 |
+| open-to-close | historical mean | 50.8% (47.5–54.1%) | 0.010 |
+| open-to-close | gap rule | 45.3% (42.0–48.5%) | −0.149 |
 
-The rule calls close-to-close direction two days in three. On the tradable open-to-close return it keeps a small edge whose interval sits above 50%. The gap rule is worse than chance: whether a day continues or reverses its opening gap is unstable, and the fitted direction keeps flipping out of sample.
+The open-to-close edge doesn't make money as "buy at the open": 134 trades, −2.5% in total. The skill is mostly in spotting down days, which a long-only strategy can only sit out.
 
-### 2. That edge does not make money as "buy at the open"
+### News adds nothing
 
-Buying at the open and selling at the close whenever the forecast beats a 10 bp round-trip cost: 134 trades, −2.5% in total, Sharpe about 0. The skill is mostly in spotting down days, which a long-only strategy can only sit out.
-
-### 3. News adds nothing, whether scored by GDELT tone or FinBERT
-
-About 234,000 English market headlines (2022–2026), each assigned only to the first session that opens after it was published, averaged into five daily moods: metals, fed, dollar, us_data and india. Each headline is scored two ways: GDELT's general-purpose tone, and [FinBERT](https://huggingface.co/ProsusAI/finbert), a BERT model trained on financial news (P(positive) − P(negative), scored with Spark; see below).
+About 234,000 English market headlines from GDELT (2022–2026), filtered for silver, precious metals, the Fed, the dollar, US data, the rupee and Indian import duty. They're averaged into five daily moods (metals, fed, dollar, us_data, india), kept apart because good news for the dollar is usually bad for silver. Each headline is scored two ways: GDELT's general tone, and [FinBERT](https://huggingface.co/ProsusAI/finbert) (P(positive) − P(negative)), run in parallel with Spark.
 
 | Model (open-to-close, 896 days) | Hit rate (95% interval) | Rank corr. |
 |---|---|---|
@@ -66,188 +63,111 @@ About 234,000 English market headlines (2022–2026), each assigned only to the 
 | FinBERT only | 51.2% (48.0–54.5%) | 0.001 |
 | overnight rule + FinBERT | 55.8% (52.5–59.0%) | 0.130 |
 
-Neither scorer beats a coin flip on its own, and adding either to the overnight rule makes its forecasts slightly worse (lower rank correlation, higher error). In the backtest every news strategy loses money after costs. Two independent ways of reading the news give the same answer: by 09:15, whatever the morning's headlines say is already in last night's silver and rupee prices.
+By 09:15, whatever the morning's headlines say is already in the overnight silver and rupee prices.
 
-### 4. The ETF's gains came overnight; Indian trading hours lost money
+### The gains came overnight
 
-| Period | Overnight (close → next open) | Daytime (open → close) | Up days, daytime |
-|---|---|---|---|
-| All days | +1,297% | **−73%** | 48% |
-| Excluding 59 suspect Yahoo bars | +1,349% | −71% | 49% |
-| 2023 | +97% | −41% | 42% |
-| 2024 | +87% | −33% | 50% |
-| 2025 | +185% | −13% | 54% |
-| 2026 to 16 Oct | +5% | −15% | 51% |
+| Period | Overnight (close → open) | Daytime (open → close) |
+|---|---|---|
+| All days | +1,297% | **−73%** |
+| 2023 | +97% | −41% |
+| 2024 | +87% | −33% |
+| 2025 | +185% | −13% |
+| 2026 to 16 Oct | +5% | −15% |
 
-Before costs. Yahoo's opens were checked against an official NSE download with `scripts/check_prices.py`: at least 95% match within 0.2%. Dropping every suspect bar (open equal to close, or to the previous close) barely changes the result, and daytime returns are negative in every full year.
+Yahoo's opening prices were checked against an official NSE download: at least 95% match within 0.2%, and dropping every suspect bar barely changes the result.
 
-### 5. Why: the ETF opens at a premium to its silver and gives it back
+### Why: the ETF opens rich
 
-`scripts/intraday_check.py` compares SILVERBEES with hourly COMEX silver converted to rupees, over the same Indian trading hours (512 sessions, May 2024 to Oct 2026; silver's morning price is taken at 09:30 IST, the first hourly bar after the open).
-
-| | Daytime total |
-|---|---|
-| SILVERBEES | **−50.8%** |
-| Silver in rupees, same hours | **+37.5%** |
-| Gap, ETF minus silver | −64.2% (average −19.3 bps a day, t = −3.6) |
-
-Silver did not fall during Indian hours; it rose. The ETF fell anyway. Grouping days by how far the ETF's open ran ahead of silver's overnight move:
-
-| Opening premium (quintile) | Avg premium | ETF daytime | Silver daytime | Gap |
-|---|---|---|---|---|
-| 1 (lowest) | −115 bps | +58 bps | +8 bps | +51 bps |
-| 2 | −26 bps | +30 bps | +12 bps | +18 bps |
-| 3 | +23 bps | −26 bps | −12 bps | −14 bps |
-| 4 | +55 bps | −19 bps | +32 bps | −50 bps |
-| 5 (highest) | +166 bps | −105 bps | −4 bps | −101 bps |
-
-The richer the open, the bigger the same-day giveback (slope −0.62, correlation −0.57). Opening cheap is followed by gains.
-
-Caveat: the slope is partly mechanical, because the opening price appears in both the premium and the giveback, so noise in it (an odd opening-auction print, or silver measured at 09:30 rather than 09:15) pushes the slope negative by itself. The average daily gap does not share that problem and is the stronger evidence. Next check: measure the giveback from 10:15 using hourly ETF prices, so the opening price is used only once.
-
-### 5b. The giveback happens in the first hour
-
-The slope above shares one price, the 09:15 open, between its two sides, so noise in that print could create it. `scripts/intraday_1015.py` splits the day at 10:15 IST using the ETF's own hourly bars (511 sessions, May 2024 to Oct 2026):
+Against hourly COMEX silver converted to rupees (511 sessions, May 2024 to October 2026):
 
 | ETF minus silver | Average per day | t | Slope on opening premium |
 |---|---|---|---|
-| 09:15–10:15 | −17.9 bps | −4.0 | −0.57 (partly mechanical) |
-| 10:15–15:30 | −1.9 bps | −0.7 | −0.05 (no shared price) |
+| 09:15–10:15 | **−17.9 bps** | −4.0 | −0.57 |
+| 10:15–15:30 | −1.9 bps | −0.7 | −0.05 |
 
-| Total ETF return | |
+| Total return | |
 |---|---|
 | buy 09:15, sell 15:30 | −50.1% |
 | buy 10:15, sell 15:30 | +14.8% (silver, same hours: +27.6%) |
 
-The ETF opens rich on average and corrects within about an hour; after 10:15 it tracks silver, and the size of the opening premium no longer predicts anything. The −17.9 bps average can't come from random noise in the opening print, which would average out; a systematically high open can. Practical reading: anyone buying this ETF during the day does better waiting until after 10:15. Costs are not included here, and the ETF still lagged silver after 10:15.
+The richer the open, the bigger the first-hour giveback. After 10:15, the opening premium predicts nothing. The first-hour slope is partly mechanical, since the opening price sits on both sides of it. The after-10:15 numbers use a separate price, and the −17.9 bps average can't come from random noise in the opening price, which would average out.
 
-### 5c. Robustness (R): real, but fading
+### Robustness (R)
 
-`Rscript R/robustness.R` re-tests the first-hour result with autocorrelation-robust (Newey-West) errors, a 10-day block bootstrap, outlier trimming and half-year splits.
+`R/robustness.R` re-tests the first-hour result:
 
-- Newey-West: first-hour gap −17.9 bps, t = −4.0; after 10:15, −1.9 bps, t = −0.7. Same as before.
-- Block bootstrap: waiting until 10:15 added +130% over the period (95% CI +43% to +297%); no draw out of 5,000 was negative.
-- Not driven by outliers: median −12.4 bps; trimming the extreme 1% of days gives −14.6 bps (t = −4.0); 61% of days negative.
-- **But it is fading:** −36 bps a day in 2024 H2, −24 in 2025 H1, −17 in 2025 H2, −5 in 2026 H1, +6 in 2026 H2 so far. The pattern has disappeared in 2026, perhaps as more traders noticed it or as the ETF's market makers tightened its pricing. A strategy built on it now would be trading on history.
+- **Newey-West errors**, which allow for runs of similar days: t = −4.0, unchanged.
+- **10-day block bootstrap:** waiting until 10:15 added +130% over the period (95% interval +43% to +297%), and none of 5,000 draws was negative.
+- **Outliers:** median −12.4 bps; trimming the extreme 1% of days gives −14.6 bps; 61% of days negative.
+- **By half-year:** −36 bps (2024 H2), −24, −17, −5 (2026 H1), +6 (2026 H2 so far). The effect has faded to nothing.
 
-### 6. What this does not mean
+## Pipeline
 
-It is not a free trade. NSE's official close is a volume-weighted average of the last 30 minutes, not a single price you can trade at, and costs on a daily round trip add up quickly.
+```
+GDELT (BigQuery) ─> clean_news ─> Spark + FinBERT ─> daily news moods ─┐
+Yahoo daily + hourly prices ───────────────────────────────────────────┴─> walk-forward models
+Airflow (daily, 16:15 IST) ─> paper trades ─> MongoDB Atlas ─> FastAPI (Vercel) ─> React dashboard
+```
 
-## Setup (Windows)
+- **Spark:** FinBERT scores the headlines inside a pandas UDF; Spark SQL builds the daily moods. A test checks that the Spark output matches the pandas version exactly. The full 233,737 headlines take 84 minutes on a laptop (4 workers × 4 PyTorch threads).
+- **Airflow:** every weekday at 16:15 IST it fetches prices and records three paper strategies (`overnight_rule`, `buy_0915`, `wait_1015`) plus the first-hour gap. Records are keyed by date, so reruns overwrite instead of duplicating.
+- **API:** FastAPI, read-only: `/summary`, `/trades`, `/equity`, `/health`.
+- **Dashboard:** React, Vite and Recharts, published to GitHub Pages by a GitHub Actions workflow.
+
+## Running it
 
 ```
 py -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 python -m pytest
-python scripts\run_baselines.py --synthetic                 # check everything runs, no network
-python scripts\run_baselines.py --etf SILVERBEES.NS         # baselines on real prices
-python scripts\news_test.py --etf SILVERBEES.NS             # does news help? (needs data\news\headlines.csv)
-python scripts\check_prices.py nse_file.csv --etf SILVERBEES.NS   # Yahoo vs official NSE prices
-python scripts\intraday_check.py --etf SILVERBEES.NS        # is the daytime drop the ETF or silver itself?
+python scripts\run_baselines.py --etf SILVERBEES.NS
+python scripts\intraday_1015.py --etf SILVERBEES.NS
 ```
 
-Options: `--refresh` re-downloads prices, `--cost-bps 15` sets the round-trip cost (default 10 bps; use what your broker actually charges plus the spread), `--min-train` and `--step` control the walk-forward windows. Results are written to `results\`.
+**News.** `python scripts\make_gdelt_sql.py --start 2024-01-01 --end 2025-01-01` prints the BigQuery query (a ready copy is in `sql\`). Save the results as CSV in `data\news\raw\`, then run `python scripts\clean_news.py` and `python scripts\news_test.py --etf SILVERBEES.NS`.
 
-News: `python scripts\make_gdelt_sql.py --start 2024-01-01 --end 2025-01-01` prints a BigQuery query (a ready copy is in `sql\gdelt_headlines.sql`). Save the results as CSV in `data\news\raw\`, then `python scripts\clean_news.py` builds `data\news\headlines.csv` and prints a quality report.
+**FinBERT with Spark.** Needs Java 17 or 21. Install the packages, then run the scoring job and the comparison:
+```
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+pip install -r requirements-nlp.txt
+python scripts\spark_score_news.py --etf SILVERBEES.NS
+python scripts\news_test.py --etf SILVERBEES.NS --scorer both
+```
+On Windows, PySpark's Python workers keep a 15-second socket timeout from connection setup, so any batch slower than that silently kills the worker. `spark_news.py` raises it.
 
-## FinBERT news scores with Spark
-
-Scores every headline with [FinBERT](https://huggingface.co/ProsusAI/finbert), a BERT model trained on financial news, in parallel across your CPU cores with Spark, then builds daily news moods with Spark SQL. The Spark job is tested to give exactly the same daily numbers as the pandas code used everywhere else.
-
-1. Install Java 17 or 21 (Spark needs it): [Eclipse Temurin](https://adoptium.net), and tick "Set JAVA_HOME" in the installer. Check with `java -version` in a new terminal.
-2. Install the extra packages. On Windows, install the smaller CPU-only PyTorch first:
-   ```
-   pip install torch --index-url https://download.pytorch.org/whl/cpu
-   pip install -r requirements-nlp.txt
-   ```
-3. A quick timing run on 2,000 headlines (downloads FinBERT, about 440 MB, once):
-   ```
-   python scripts\spark_score_news.py --etf SILVERBEES.NS --limit 2000
-   ```
-4. All headlines (writes `data\news\headlines_scored.parquet` and `data\news\daily_news.parquet`):
-   ```
-   python scripts\spark_score_news.py --etf SILVERBEES.NS
-   ```
-5. Compare FinBERT with GDELT tone:
-   ```
-   python scripts\news_test.py --etf SILVERBEES.NS --scorer both
-   ```
-
-News moods use five themes, because good news for the dollar is usually bad for silver while a Fed rate cut is usually good: metals, fed, dollar, us_data, india. `--scorer keyword` runs the whole pipeline with a crude stand-in scorer, for checking setup without the model. A "Did not find winutils.exe" warning on Windows is harmless here: output is written through pandas, not Hadoop.
-
-The full run took 84 minutes on a 16-thread laptop (4 Spark workers, 4 PyTorch threads each, about 46 headlines a second). Each FinBERT worker holds its own copy of the model, so more workers means more memory, not more speed.
-
-On Windows, PySpark's Python workers keep the 15-second timeout they use while connecting to Spark, so any batch that takes longer (FinBERT's do) kills the worker with only "Python worker exited unexpectedly". `spark_news.py` raises that timeout for this job. If workers still die, `python scripts\finbert_doctor.py` tests FinBERT and Spark separately and together, and saves each worker's crash output to `data\logs\`.
-
-## Daily paper trading (Airflow + MongoDB)
-
-An Airflow DAG runs at 16:15 IST on weekdays: fetch prices, paper-trade the session, report running totals. Each session gets one MongoDB record, built only from what was knowable at each decision. Three long-or-flat paper strategies, costs included:
-
-- `overnight_rule`: at 09:15, buy if last night's silver × rupee forecast beats the cost (the model is refitted every day on past sessions only)
-- `buy_0915`: buy every day at 09:15 (the benchmark)
-- `wait_1015`: buy every day at 10:15 instead, to see whether the first-hour giveback comes back
-
-It also stores the first-hour gap (ETF minus silver, 09:15 to 10:15), the number to watch.
-
-1. Start Airflow and a local MongoDB (the first start takes a few minutes while packages install):
-   ```
-   docker compose up -d
-   ```
-2. Get the Airflow password, then open http://localhost:8080 and log in as `admin`:
-   ```
-   docker compose exec airflow cat /opt/airflow/standalone_admin_password.txt
-   ```
-3. Turn on `silver_signal_daily`, and press ▶ to run it now.
-4. Backfill past sessions so there's history to look at:
-   ```
-   docker compose exec airflow python /opt/silver-signal/scripts/paper_trade.py --etf SILVERBEES.NS --days 120
-   ```
-
-Without Docker: `python scripts\paper_trade.py --etf SILVERBEES.NS --dry-run` prints the records without saving them. To use MongoDB Atlas instead of the local database, create a free cluster, then put `MONGODB_URI=mongodb+srv://...` in a `.env` file next to `docker-compose.yml` (it's in `.gitignore`) and run `docker compose up -d` again.
-
-## API and dashboard
-
-A read-only FastAPI service (`api/`) serves the paper-trading records from MongoDB (`/summary`, `/trades`, `/equity`, `/health`; interactive docs at `/docs`), and a React dashboard (`dashboard/`, Vite + Recharts) shows each strategy's growth, the first-hour gap over time, and the latest sessions. Both start with the rest:
-
+**Pipeline, API and dashboard.**
 ```
 docker compose up -d --build
 ```
+This starts Airflow on http://localhost:8080 (the password is in `/opt/airflow/standalone_admin_password.txt`), the API on http://localhost:8000/docs and the dashboard on http://localhost:3000. To use Atlas instead of the local MongoDB, put `MONGODB_URI=...` in a `.env` file. To backfill the paper trades:
+```
+docker compose exec airflow python /opt/silver-signal/scripts/paper_trade.py --etf SILVERBEES.NS --days 120
+```
 
-Then open http://localhost:3000 (dashboard) and http://localhost:8000/docs (API).
+**R checks.** Run `Rscript R/robustness.R`. It needs the `sandwich` and `lmtest` packages.
 
 ## Layout
 
 ```
-silver_signal/
-  config.py         tickers, market hours, cost assumption
-  data.py           Yahoo Finance download and CSV cache
-  features.py       one row per trading day, no look-ahead
-  baselines.py      the models to beat
-  evaluate.py       walk-forward, hit rate, backtest
-  news.py           assigns headlines to sessions safely
-  news_filter.py    what counts as a relevant headline (shared by SQL and Python)
-  news_features.py  daily news moods per theme
-  finbert.py        FinBERT headline scoring
-  spark_news.py     the Spark job: parallel scoring and Spark SQL aggregation
-  intraday.py       hourly silver vs the ETF during Indian trading hours
-  synthetic.py      fake data with the real timing, for tests
-scripts/            run_baselines, news_test, check_prices, intraday_check,
-                    make_gdelt_sql, clean_news, spark_score_news
-sql/                ready-to-paste BigQuery query
-tests/              look-ahead, news cut-off, filters, walk-forward
-docs/               raw output tables
-PLAN.md             what to build next, week by week
+silver_signal/   data, features, baselines, walk-forward evaluation, news filters and
+                 features, FinBERT, the Spark job, intraday analysis, paper trading
+scripts/         command-line entry points
+R/               robustness checks
+api/             FastAPI service
+dashboard/       React dashboard
+airflow/dags/    the daily pipeline
+sql/             BigQuery query for GDELT headlines
+tests/           look-ahead, news cut-off, filters, Spark vs pandas, API
 ```
 
-## Known limitations
+## Limitations
 
-- `SI=F` is a continuous futures series, so it jumps when contracts roll. Those days produce fake "overnight moves". Detect them or switch to a spot series.
-- Daily bars only approximate the overnight window (they run roughly 03:30 to 03:30 IST, not 15:30 to 09:15). `PLAN.md` week 2 replaces this with hourly data.
-- Yahoo only has HDFC Silver ETF prices from March 2025, so the main results use SILVERBEES (`--etf SILVERBEES.NS`). Around 1,000 trading days in total: hit rates near 52% are indistinguishable from chance, so always read the interval.
-- NSE's official closing price is a volume-weighted average of the last 30 minutes, not a single tradable price.
-- GDELT has no headlines for 17 days in June 2025. Those sessions are flagged as `news_missing` rather than treated as quiet.
-- The ETF can trade at a premium or discount to the value of its silver, which no price model here captures yet.
+- `SI=F` is a continuous futures series, so it jumps when contracts roll.
+- Daily silver bars only approximate the overnight window; the intraday results use hourly bars.
+- Around 1,000 trading days: hit rates near 52% are indistinguishable from chance, so read the intervals.
+- NSE's official close is a volume-weighted average of the last 30 minutes, not a single tradable price.
+- GDELT has no headlines for 17 days in June 2025; those sessions are flagged rather than treated as quiet.
 
-Not financial advice. Paper trade any signal for a few months before risking money on it.
+Not financial advice.

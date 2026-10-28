@@ -1,4 +1,4 @@
-"""News plumbing. Collecting headlines and scoring them is your part (see PLAN.md).
+"""Assigning headlines to trading sessions, plus a simple keyword scorer.
 
 What is here is the part that is easy to get subtly wrong: deciding which
 trading day a headline is allowed to inform. A headline may only feed the
@@ -58,7 +58,7 @@ def daily_features(headlines: pd.DataFrame, sessions: pd.DatetimeIndex, scorer) 
     return feats
 
 
-# A deliberately crude placeholder. Your FinBERT or LLM scorer should beat it.
+# A crude keyword scorer, used as a fast stand-in for FinBERT in tests and dry runs.
 _UP = ("rate cut", "dovish", "weaker dollar", "dollar falls", "rupee falls",
        "safe haven", "solar demand", "rally", "surge", "record high", "stimulus")
 _DOWN = ("rate hike", "hawkish", "stronger dollar", "dollar rises", "rupee gains",

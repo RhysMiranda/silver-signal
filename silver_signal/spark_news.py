@@ -32,21 +32,6 @@ def scorer(kind: str):
     return finbert.get_model(threads=threads).probs
 
 
-def _worker_log() -> None:
-    """If SILVER_SIGNAL_WORKER_LOG is set, send this worker's crash output
-    (including C-level messages from torch/OpenMP) to data/logs/worker_<pid>.log."""
-    if not os.environ.get("SILVER_SIGNAL_WORKER_LOG") or getattr(_worker_log, "done", False):
-        return
-    import faulthandler
-    d = ROOT / "data" / "logs"
-    d.mkdir(parents=True, exist_ok=True)
-    f = open(d / f"worker_{os.getpid()}.log", "a", buffering=1)
-    os.dup2(f.fileno(), 2)
-    faulthandler.enable(file=f, all_threads=True)
-    f.write(f"worker {os.getpid()} started, python {sys.executable}\n")
-    _worker_log.done = True
-
-
 def spark_session(cores: int, conf: dict | None = None, env: dict | None = None):
     from pyspark.sql import SparkSession
 
@@ -107,7 +92,6 @@ def _run(spark, headlines, sessions, scorer_kind, partitions):
 
     @pandas_udf("p_pos double, p_neg double, p_neu double")
     def score_udf(batches: Iterator[pd.Series]) -> Iterator[pd.DataFrame]:
-        _worker_log()
         score = scorer_fn(scorer_kind)
         for titles in batches:
             p = score(titles.tolist())
