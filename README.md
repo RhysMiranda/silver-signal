@@ -4,14 +4,14 @@ Can the morning's news predict Indian silver ETFs, once you account for what sil
 
 Silver ETFs on NSE hold physical silver, so their price is mostly the international silver price in rupees. By the 09:15 IST open, silver has already traded all night in London and New York. This project starts from that one-line rule, tests whether 234,000 news headlines add anything on top of it, and then follows up on what the data showed instead.
 
-**Live dashboard:** [rhysmiranda.github.io/silver-signal](https://rhysmiranda.github.io/silver-signal/), daily paper trading since May 2026.
+**Live dashboard:** [rhysmiranda.github.io/silver-signal](https://rhysmiranda.github.io/silver-signal/), daily paper-trading results from May 2026, updated every weekday.
 
 ## Findings
 
 1. **Last night's silver and rupee moves predict the ETF's day.** The overnight rule calls close-to-close direction 67% of the time, and the tradable open-to-close direction 56% (95% interval 53–59%).
 2. **News adds nothing.** Headlines scored by GDELT's tone and by FinBERT both perform at chance on their own (50–51%) and make the overnight rule slightly worse when added.
-3. **The ETF's gains all came overnight.** Over four years, Indian trading hours lost money in every full year, while silver itself rose during those hours.
-4. **The cause is the opening price.** The ETF opened 18 bps a day rich compared with silver (t = −4.0) and gave it back within the first hour. After 10:15 it tracked silver. Buying at 10:15 rather than 09:15 turned −50% into +15% over two years.
+3. **The ETF's gains all came overnight.** Indian trading hours lost money in every full year, even though silver itself rose during those hours (measured hourly over the last two years).
+4. **The cause is the opening price.** The ETF opened rich compared with silver and gave back 18 bps a day within the first hour (t = −4.0). After 10:15 it tracked silver. Buying at 10:15 rather than 09:15 turned −50% into +15% over two years.
 5. **That edge has faded.** It was −36 bps a day in late 2024 and is gone in 2026. The daily pipeline tracks whether it returns.
 
 ## Method
