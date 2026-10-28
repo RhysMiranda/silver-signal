@@ -54,17 +54,19 @@ The rule calls close-to-close direction two days in three. On the tradable open-
 
 Buying at the open and selling at the close whenever the forecast beats a 10 bp round-trip cost: 134 trades, −2.5% in total, Sharpe about 0. The skill is mostly in spotting down days, which a long-only strategy can only sit out.
 
-### 3. News, as measured by GDELT tone, adds nothing
+### 3. News adds nothing, whether scored by GDELT tone or FinBERT
 
-About 234,000 English market headlines (2022–2026), each assigned only to the first session that opens after it was published, averaged into three daily moods: metals, US macro and India.
+About 234,000 English market headlines (2022–2026), each assigned only to the first session that opens after it was published, averaged into five daily moods: metals, fed, dollar, us_data and india. Each headline is scored two ways: GDELT's general-purpose tone, and [FinBERT](https://huggingface.co/ProsusAI/finbert), a BERT model trained on financial news (P(positive) − P(negative), scored with Spark; see below).
 
-| Model (open-to-close) | Hit rate (95% interval) | Rank corr. |
+| Model (open-to-close, 896 days) | Hit rate (95% interval) | Rank corr. |
 |---|---|---|
 | overnight rule | 55.9% (52.6–59.1%) | 0.154 |
-| news only | 50.3% (47.0–53.6%) | −0.002 |
-| overnight rule + news | 55.4% (52.1–58.7%) | 0.140 |
+| GDELT tone only | 50.1% (46.8–53.4%) | 0.001 |
+| overnight rule + GDELT tone | 55.8% (52.5–59.0%) | 0.133 |
+| FinBERT only | 51.2% (48.0–54.5%) | 0.001 |
+| overnight rule + FinBERT | 55.8% (52.5–59.0%) | 0.130 |
 
-The news moods' correlation with the overnight rule's errors is −0.02 to −0.03, inside the ±0.07 noise band for 896 days. GDELT's general-purpose tone is a blunt measure; a finance-specific scorer (FinBERT, or an LLM that knows "rate cuts" are good for silver) is the next test.
+Neither scorer beats a coin flip on its own, and adding either to the overnight rule makes its forecasts slightly worse (lower rank correlation, higher error). In the backtest every news strategy loses money after costs. Two independent ways of reading the news give the same answer: by 09:15, whatever the morning's headlines say is already in last night's silver and rupee prices.
 
 ### 4. The ETF's gains came overnight; Indian trading hours lost money
 
@@ -149,6 +151,10 @@ Scores every headline with [FinBERT](https://huggingface.co/ProsusAI/finbert), a
    ```
 
 News moods use five themes, because good news for the dollar is usually bad for silver while a Fed rate cut is usually good: metals, fed, dollar, us_data, india. `--scorer keyword` runs the whole pipeline with a crude stand-in scorer, for checking setup without the model. A "Did not find winutils.exe" warning on Windows is harmless here: output is written through pandas, not Hadoop.
+
+The full run took 84 minutes on a 16-thread laptop (4 Spark workers, 4 PyTorch threads each, about 46 headlines a second). Each FinBERT worker holds its own copy of the model, so more workers means more memory, not more speed.
+
+On Windows, PySpark's Python workers keep the 15-second timeout they use while connecting to Spark, so any batch that takes longer (FinBERT's do) kills the worker with only "Python worker exited unexpectedly". `spark_news.py` raises that timeout for this job. If workers still die, `python scripts\finbert_doctor.py` tests FinBERT and Spark separately and together, and saves each worker's crash output to `data\logs\`.
 
 ## Layout
 
