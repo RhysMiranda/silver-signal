@@ -36,7 +36,7 @@ def _report():
 with DAG(
     dag_id="silver_signal_daily",
     start_date=datetime(2026, 10, 1),
-    schedule="45 10 * * 1-5",          # 10:45 UTC = 16:15 IST
+    schedule="15 16 * * 1-5",          # 16:15 IST (docker-compose sets Airflow's timezone to Asia/Kolkata)
     catchup=False,
     default_args={"retries": 2, "retry_delay": timedelta(minutes=10)},
     tags=["silver-signal"],
